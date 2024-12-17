@@ -1,0 +1,24 @@
+[package]
+name = "databaseschema"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+async-trait = "0.1"
+bigdecimal = { version = "0.4.5", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
+diesel = { version = "2.2.2", features = ["chrono", "uuid", "numeric"] }
+diesel-async = { version = "0.5.0", features = ["deadpool", "postgres"] }
+deadpool = "0.12.1"
+dotenv = "0.15.0"
+futures-util = "0.3.30"
+mockall = "0.12.1"
+native-tls = "0.2.12"
+postgres-native-tls = "0.5.0"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+tokio = { version = "1.38.0", features = ["full"] }
+tokio-postgres = "0.7.2"
+tokio-retry = "0.3.0"
+uuid = { version = "1.10.0", features = ["serde", "v4"] }
