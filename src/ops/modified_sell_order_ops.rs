@@ -1,6 +1,6 @@
 use crate::{
     get_connection,
-    models::{ModifiedSellOrder, NewModifiedSellOrder},
+    models::modified_sell_order::{ModifiedSellOrder, NewModifiedSellOrder},
     CustomAsyncPgConnectionManager,
 };
 use bigdecimal::BigDecimal;

@@ -1,4 +1,4 @@
-use crate::{get_connection, models::OpenSellCandlestick, CustomAsyncPgConnectionManager};
+use crate::{get_connection, models::open_sell_candlestick::OpenSellCandlestick, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel_async::RunQueryDsl;
 use std::sync::Arc;

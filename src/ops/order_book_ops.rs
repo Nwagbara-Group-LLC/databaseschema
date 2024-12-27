@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{get_connection, models::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
+use crate::{get_connection, models::orderbook::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::prelude::*;

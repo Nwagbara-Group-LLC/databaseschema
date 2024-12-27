@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{get_connection, models::{NewSecurity, Security}, CustomAsyncPgConnectionManager};
+use crate::{get_connection, models::security::{NewSecurity, Security}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;

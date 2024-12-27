@@ -1,66 +1,6 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    open_buy_candlestick_agg (bucket) {
-        bucket -> Timestamptz,
-        #[max_length = 7]
-        symbol -> Varchar,
-        #[max_length = 8]
-        exchange -> Varchar,
-        low_buy_price -> Numeric,
-        high_buy_price -> Numeric,
-        open_buy_price -> Numeric,
-        close_buy_price -> Numeric,
-        total_buy_volume -> Numeric,
-    }
-}
-
-diesel::table! {
-    modified_buy_candlestick_agg (bucket) {
-        bucket -> Timestamptz,
-        #[max_length = 7]
-        symbol -> Varchar,
-        #[max_length = 8]
-        exchange -> Varchar,
-        low_buy_price -> Numeric,
-        high_buy_price -> Numeric,
-        open_buy_price -> Numeric,
-        close_buy_price -> Numeric,
-        total_buy_volume -> Numeric,
-    }
-}
-
-diesel::table! {
-    open_sell_candlestick_agg (bucket) {
-        bucket -> Timestamptz,
-        #[max_length = 7]
-        symbol -> Varchar,
-        #[max_length = 8]
-        exchange -> Varchar,
-        low_sell_price -> Numeric,
-        high_sell_price -> Numeric,
-        open_sell_price -> Numeric,
-        close_sell_price -> Numeric,
-        total_sell_volume -> Numeric,
-    }
-}
-
-diesel::table! {
-    modified_sell_candlestick_agg (bucket) {
-        bucket -> Timestamptz,
-        #[max_length = 7]
-        symbol -> Varchar,
-        #[max_length = 8]
-        exchange -> Varchar,
-        low_sell_price -> Numeric,
-        high_sell_price -> Numeric,
-        open_sell_price -> Numeric,
-        close_sell_price -> Numeric,
-        total_sell_volume -> Numeric,
-    }
-}
-
-diesel::table! {
     exchanges (exchange_id) {
         created_at -> Timestamptz,
         exchange_id -> Uuid,

@@ -1,4 +1,4 @@
-use crate::{get_connection, models::{NewTrade, Trade}, CustomAsyncPgConnectionManager};
+use crate::{get_connection, models::trade::{NewTrade, Trade}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;

@@ -1,6 +1,6 @@
-pub mod models;
 pub mod ops;
-mod schema;
+pub mod schema;
+pub mod models;
 
 use anyhow::Result;
 use deadpool::managed::{Manager, Metrics, Object, Pool, RecycleResult};

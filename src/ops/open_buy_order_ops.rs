@@ -1,4 +1,4 @@
-use crate::{get_connection, models::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
+use crate::{get_connection, models::open_buy_order::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::prelude::*;
