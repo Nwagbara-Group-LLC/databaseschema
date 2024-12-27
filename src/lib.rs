@@ -83,7 +83,6 @@ pub fn establish_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
     let manager = CustomAsyncPgConnectionManager::new(database_url);
 
     Pool::builder(manager)
