@@ -27,6 +27,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    modified_buy_candlestick_agg (bucket, symbol) {
+        bucket -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        low -> Numeric,
+        high -> Numeric,
+        open -> Numeric,
+        close -> Numeric,
+        volume -> Numeric,
+    }
+}
+
+diesel::table! {
     modified_sell_orders (created_at, unique_id) {
         created_at -> Timestamptz,
         #[max_length = 7]
@@ -40,6 +55,21 @@ diesel::table! {
         unique_id -> Varchar,
         price_level -> Numeric,
         new_sell_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    modified_sell_candlestick_agg (bucket, symbol) {
+        bucket -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        low -> Numeric,
+        high -> Numeric,
+        open -> Numeric,
+        close -> Numeric,
+        volume -> Numeric,
     }
 }
 
@@ -61,6 +91,21 @@ diesel::table! {
 }
 
 diesel::table! {
+    open_buy_candlestick_agg (bucket, symbol) {
+        bucket -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        low -> Numeric,
+        high -> Numeric,
+        open -> Numeric,
+        close -> Numeric,
+        volume -> Numeric,
+    }
+}
+
+diesel::table! {
     open_sell_orders (created_at, unique_id) {
         created_at -> Timestamptz,
         #[max_length = 7]
@@ -74,6 +119,21 @@ diesel::table! {
         unique_id -> Varchar,
         price_level -> Numeric,
         sell_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    open_sell_candlestick_agg (bucket, symbol) {
+        bucket -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        low -> Numeric,
+        high -> Numeric,
+        open -> Numeric,
+        close -> Numeric,
+        volume -> Numeric,
     }
 }
 
@@ -123,9 +183,13 @@ diesel::table! {
 diesel::allow_tables_to_appear_in_same_query!(
     exchanges,
     modified_buy_orders,
+    modified_buy_candlestick_agg,
     modified_sell_orders,
+    modified_sell_candlestick_agg,
     open_buy_orders,
+    open_buy_candlestick_agg,
     open_sell_orders,
+    open_sell_candlestick_agg,
     order_books,
     securities,
     trades,
