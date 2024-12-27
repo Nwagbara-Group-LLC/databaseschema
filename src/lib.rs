@@ -54,7 +54,7 @@ impl Manager for CustomAsyncPgConnectionManager {
 
     async fn create(&self) -> Result<Self::Type> {
         self.create_connection().await.map_err(|e| {
-            eprintln!("Failed to create connection: {}", e);
+            eprintln!("Failed to create database connection: {}", e);
             e
         })
     }
@@ -88,7 +88,7 @@ pub fn establish_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
 
     Pool::builder(manager)
         .build()
-        .expect("Failed to create pool")
+        .expect("Failed to create database pool")
 }
 
 /// Function to get a connection from the pool
@@ -99,9 +99,9 @@ pub async fn get_connection(
 
     Retry::spawn(retry_strategy, || async {
         Ok(pool.get().await.map_err(|e| {
-            eprintln!("Failed to get connection from pool: {}", e);
+            eprintln!("Failed to get database connection from pool: {}", e);
             e
-        }).expect("Failed to get connection from pool"))
+        }).expect("Failed to get database connection from pool"))
     })
     .await
 }
