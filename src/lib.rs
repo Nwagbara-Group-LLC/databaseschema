@@ -42,8 +42,7 @@ impl CustomAsyncPgConnectionManager {
         });
 
         // Convert the `tokio-postgres` client to `AsyncPgConnection`
-        let async_pg_conn = AsyncPgConnection::try_from(client).await?;
-        Ok(async_pg_conn)
+        AsyncPgConnection::try_from(client).await.map_err(|e| anyhow::Error::from(e))
     }
 }
 
