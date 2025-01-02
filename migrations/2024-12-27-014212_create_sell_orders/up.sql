@@ -23,4 +23,23 @@ ALTER TABLE open_sell_orders SET (
 SELECT add_compression_policy('open_sell_orders', INTERVAL '7 days');
 SELECT add_retention_policy('open_sell_orders', INTERVAL '6 years');
 
+-- Index on unique_id for faster lookups by unique_id
 CREATE INDEX idx_open_sell_unique_id ON open_sell_orders (unique_id);
+
+-- Index on symbol for faster lookups by symbol
+CREATE INDEX idx_open_sell_symbol ON open_sell_orders (symbol);
+
+-- Index on exchange for faster lookups by exchange
+CREATE INDEX idx_open_sell_exchange ON open_sell_orders (exchange);
+
+-- Index on security_id for faster lookups by security_id
+CREATE INDEX idx_open_sell_security_id ON open_sell_orders (security_id);
+
+-- Index on exchange_id for faster lookups by exchange_id
+CREATE INDEX idx_open_sell_exchange_id ON open_sell_orders (exchange_id);
+
+-- Index on sell_order_book_id for faster lookups by sell_order_book_id
+CREATE INDEX idx_open_sell_sell_order_book_id ON open_sell_orders (sell_order_book_id);
+
+-- Composite index on frequently queried combinations
+CREATE INDEX idx_open_sell_symbol_exchange ON open_sell_orders (symbol, exchange);

@@ -23,4 +23,23 @@ ALTER TABLE modified_buy_orders SET (
 SELECT add_compression_policy('modified_buy_orders', INTERVAL '7 days');
 SELECT add_retention_policy('modified_buy_orders', INTERVAL '6 years');
 
+-- Index on unique_id for faster lookups by unique_id
 CREATE INDEX idx_modified_buy_unique_id ON modified_buy_orders (unique_id);
+
+-- Index on symbol for faster lookups by symbol
+CREATE INDEX idx_modified_buy_symbol ON modified_buy_orders (symbol);
+
+-- Index on exchange for faster lookups by exchange
+CREATE INDEX idx_modified_buy_exchange ON modified_buy_orders (exchange);
+
+-- Index on security_id for faster lookups by security_id
+CREATE INDEX idx_modified_buy_security_id ON modified_buy_orders (security_id);
+
+-- Index on exchange_id for faster lookups by exchange_id
+CREATE INDEX idx_modified_buy_exchange_id ON modified_buy_orders (exchange_id);
+
+-- Index on buy_order_book_id for faster lookups by buy_order_book_id
+CREATE INDEX idx_modified_buy_buy_order_book_id ON modified_buy_orders (buy_order_book_id);
+
+-- Composite index on frequently queried combinations
+CREATE INDEX idx_modified_buy_symbol_exchange ON modified_buy_orders (symbol, exchange);

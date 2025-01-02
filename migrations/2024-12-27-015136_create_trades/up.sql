@@ -22,3 +22,21 @@ ALTER TABLE trades SET (
 
 SELECT add_compression_policy('trades', INTERVAL '7 days');
 SELECT add_retention_policy('trades', INTERVAL '6 years');
+
+-- Index on symbol for faster lookups by symbol
+CREATE INDEX idx_trades_symbol ON trades (symbol);
+
+-- Index on exchange for faster lookups by exchange
+CREATE INDEX idx_trades_exchange ON trades (exchange);
+
+-- Index on security_id for faster lookups by security_id
+CREATE INDEX idx_trades_security_id ON trades (security_id);
+
+-- Index on exchange_id for faster lookups by exchange_id
+CREATE INDEX idx_trades_exchange_id ON trades (exchange_id);
+
+-- Index on side for faster lookups by side
+CREATE INDEX idx_trades_side ON trades (side);
+
+-- Composite index on frequently queried combinations
+CREATE INDEX idx_trades_symbol_exchange ON trades (symbol, exchange);

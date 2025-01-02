@@ -89,6 +89,7 @@ pub fn establish_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
     let manager = CustomAsyncPgConnectionManager::new(database_url);
 
     Pool::builder(manager)
+        .max_size(15)
         .build()
         .expect("Failed to create database pool")
 }
