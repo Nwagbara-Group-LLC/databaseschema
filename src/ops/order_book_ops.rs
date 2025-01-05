@@ -75,7 +75,7 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
 }
 
 pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> OrderBook {
-    println!("Getting orderbook");
+    println!("Getting orderbook by exchange id");
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = FixedInterval::from_millis(1).take(15);
@@ -86,6 +86,27 @@ pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnection
         .expect("Error connecting to database");
     order_books
         .filter(exchange_id.eq(xchange_id))
+        .first::<OrderBook>(&mut connection)
+        .await
+        .map_err(|e| {
+            eprintln!("Error loading orderbook: {}", e);
+            e
+        })
+    }).await.expect("Error getting orderbook")
+}
+
+pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> OrderBook {
+    println!("Getting orderbook by symbol");
+    use crate::schema::order_books::dsl::*;
+
+    let retry_strategy = FixedInterval::from_millis(1).take(15);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_connection(pool.clone())
+        .await
+        .expect("Error connecting to database");
+    order_books
+        .filter(symbol.eq(sym))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {

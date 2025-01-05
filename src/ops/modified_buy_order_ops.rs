@@ -109,3 +109,24 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
         })
     }).await.expect("Error getting modified buy orders")
 }
+
+pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<ModifiedBuyOrder> {
+    println!("Getting modified buy orders");
+    use crate::schema::modified_buy_orders::dsl::*;
+
+    let retry_strategy = FixedInterval::from_millis(1).take(15);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_connection(pool.clone())
+        .await
+        .expect("Error connecting to database");
+    modified_buy_orders
+    .filter(symbol.eq(sym))
+    .load::<ModifiedBuyOrder>(&mut connection)
+        .await
+        .map_err(|e| {
+            eprintln!("Error loading modified buy orders: {}", e);
+            e
+        })
+    }).await.expect("Error getting modified buy orders")
+}

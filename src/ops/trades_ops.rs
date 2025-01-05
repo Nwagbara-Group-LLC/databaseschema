@@ -26,3 +26,25 @@ pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orde
         })
     }).await.expect("Error creating trades")
 }
+
+pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<Trade> {
+    println!("Getting trades by symbol");
+    use crate::schema::trades::dsl::*;
+
+    let retry_strategy = FixedInterval::from_millis(1).take(15);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_connection(pool.clone())
+            .await
+            .expect("Error connecting to database");
+        trades
+            .filter(symbol.eq(sym))
+            .select(Trade::as_select()) // Ensure the fields match
+            .load::<Trade>(&mut connection)
+            .await
+            .map_err(|e| {
+                eprintln!("Error loading trades: {}", e);
+                e
+            })
+    }).await.expect("Error getting trades")
+}

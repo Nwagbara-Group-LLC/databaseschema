@@ -109,3 +109,24 @@ pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
         })
     }).await.expect("Error getting open buy orders")
 }
+
+pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<OpenBuyOrder> {
+    println!("Getting open buy orders");
+    use crate::schema::open_buy_orders::dsl::*;
+
+    let retry_strategy = FixedInterval::from_millis(1).take(15);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_connection(pool.clone())
+        .await
+        .expect("Error connecting to database");
+    open_buy_orders
+    .filter(symbol.eq(sym))
+    .load::<OpenBuyOrder>(&mut connection)
+        .await
+        .map_err(|e| {
+            eprintln!("Error loading open buy orders: {}", e);
+            e
+        })
+    }).await.expect("Error getting open buy orders")
+}

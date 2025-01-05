@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::schema::trades;
 
-#[derive(Debug, Insertable)]
+#[derive(Serialize, Deserialize, Debug, Insertable, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = trades)]
 pub struct NewTrade {
     pub symbol: String,

@@ -1,10 +1,11 @@
 use crate::{get_connection, models::modified_buy_candlestick::ModifiedBuyCandlestick, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
+use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn get_modified_buy_candlesticks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<ModifiedBuyCandlestick> {
+pub async fn get_modified_buy_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<ModifiedBuyCandlestick> {
     println!("Getting modified buy candlesticks");
     use crate::schema::modified_buy_candlestick_agg::dsl::*;
 
@@ -15,6 +16,7 @@ pub async fn get_modified_buy_candlesticks(pool: Arc<Pool<CustomAsyncPgConnectio
         .await
         .expect("Error connecting to database");
     modified_buy_candlestick_agg
+        .filter(symbol.eq(sym))
         .load::<ModifiedBuyCandlestick>(&mut connection)
         .await
         .map_err(|e| {
