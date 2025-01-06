@@ -1,4 +1,4 @@
-use crate::{get_connection, models::exchange::{Exchange, NewExchange}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::exchange::{Exchange, NewExchange}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
@@ -12,7 +12,7 @@ pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         diesel::insert_into(exchanges)
@@ -34,7 +34,7 @@ pub async fn get_exchanges(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> V
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         exchanges
@@ -54,7 +54,7 @@ pub async fn get_exchanges_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         exchanges
@@ -75,7 +75,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         exchanges
@@ -96,7 +96,7 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, na
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         exchanges

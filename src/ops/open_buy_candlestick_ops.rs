@@ -1,4 +1,4 @@
-use crate::{get_connection, models::open_buy_candlestick::OpenBuyCandlestick, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::open_buy_candlestick::OpenBuyCandlestick, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::{ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
@@ -12,7 +12,7 @@ pub async fn get_open_buy_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgCon
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     open_buy_candlestick_agg

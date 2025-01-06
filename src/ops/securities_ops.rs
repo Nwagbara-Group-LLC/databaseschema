@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{get_connection, models::security::{NewSecurity, Security}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::security::{NewSecurity, Security}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
@@ -13,7 +13,7 @@ pub async fn create_security(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone()).await.expect("Error connecting to database");
+        let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
         diesel::insert_into(securities)
         .values(&new_security)
         .returning(Security::as_returning())
@@ -33,7 +33,7 @@ pub async fn get_securities(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone()).await.expect("Error connecting to database");
+        let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
     securities
         .load::<Security>(&mut connection)
         .await
@@ -51,7 +51,7 @@ pub async fn get_securities_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone()).await.expect("Error connecting to database");
+        let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
     securities
         .find(get_security.security_id)
         .first::<Security>(&mut connection)
@@ -70,7 +70,7 @@ pub async fn get_security_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManage
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone()).await.expect("Error connecting to database");
+        let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
     securities
         .filter(symbol.eq(sym))
         .first::<Security>(&mut connection)
@@ -91,7 +91,7 @@ pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sy
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone()).await.expect("Error connecting to database");
+        let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
     securities
         .filter(symbol.eq(sym))
         .first::<Security>(&mut connection)

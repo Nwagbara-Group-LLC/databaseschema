@@ -1,5 +1,5 @@
 use crate::{
-    get_connection,
+    get_timescale_connection,
     models::modified_sell_order::{ModifiedSellOrder, NewModifiedSellOrder},
     CustomAsyncPgConnectionManager,
 };
@@ -20,7 +20,7 @@ pub async fn create_modified_sell_order(
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
 
@@ -46,7 +46,7 @@ pub async fn create_modified_sell_orders(
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
 
@@ -69,7 +69,7 @@ pub async fn delete_modified_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(modified_sell_orders.filter(unique_id.eq(id)))
@@ -89,7 +89,7 @@ pub async fn delete_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(modified_sell_orders.filter(unique_id.eq_any(ids)))
@@ -109,7 +109,7 @@ pub async fn get_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     modified_sell_orders
@@ -129,7 +129,7 @@ pub async fn get_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConn
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     modified_sell_orders

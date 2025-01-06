@@ -1,4 +1,4 @@
-use crate::{get_connection, models::modified_buy_order::{ModifiedBuyOrder, NewModifiedBuyOrder}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::modified_buy_order::{ModifiedBuyOrder, NewModifiedBuyOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel::QueryDsl;
@@ -13,7 +13,7 @@ pub async fn create_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionMan
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::insert_into(modified_buy_orders)
@@ -35,7 +35,7 @@ pub async fn create_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::insert_into(modified_buy_orders)
@@ -57,7 +57,7 @@ pub async fn delete_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionMan
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(modified_buy_orders.filter(unique_id.eq(id)))
@@ -77,7 +77,7 @@ pub async fn delete_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(modified_buy_orders.filter(unique_id.eq_any(ids)))
@@ -97,7 +97,7 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     modified_buy_orders
@@ -117,7 +117,7 @@ pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConne
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     modified_buy_orders

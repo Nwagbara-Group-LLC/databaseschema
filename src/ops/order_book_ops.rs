@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{get_connection, models::orderbook::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::orderbook::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::prelude::*;
@@ -15,7 +15,7 @@ pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::insert_into(order_books)
@@ -39,7 +39,7 @@ pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     order_books
@@ -59,7 +59,7 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
         diesel::update(order_books.find(orderbook.order_book_id))
@@ -81,7 +81,7 @@ pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnection
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     order_books
@@ -102,7 +102,7 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     order_books
@@ -123,7 +123,7 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, x
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     order_books

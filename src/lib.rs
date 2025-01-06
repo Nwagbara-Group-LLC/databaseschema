@@ -22,7 +22,7 @@ impl CustomAsyncPgConnectionManager {
         Self { database_url }
     }
 
-    async fn create_connection(&self) -> Result<AsyncPgConnection> {
+    async fn create_timescale_connection(&self) -> Result<AsyncPgConnection> {
         println!("Creating database connection");
         let config = self
             .database_url
@@ -54,7 +54,7 @@ impl Manager for CustomAsyncPgConnectionManager {
 
     async fn create(&self) -> Result<Self::Type> {
         println!("Creating database connection");
-        self.create_connection().await.map_err(|e| {
+        self.create_timescale_connection().await.map_err(|e| {
             eprintln!("Failed to create database connection: {}", e);
             e
         })
@@ -81,21 +81,20 @@ impl Manager for CustomAsyncPgConnectionManager {
 }
 
 /// Function to create a connection pool
-pub fn establish_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
+pub fn create_timescale_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
     dotenv().ok();
-    println!("Establishing database connection pool");
+    println!("Creating database connection pool");
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let manager = CustomAsyncPgConnectionManager::new(database_url);
 
     Pool::builder(manager)
-        .max_size(15)
         .build()
         .expect("Failed to create database pool")
 }
 
 /// Function to get a connection from the pool
-pub async fn get_connection(
+pub async fn get_timescale_connection(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
 ) -> Result<Object<CustomAsyncPgConnectionManager>> {
     println!("Getting database connection from pool");

@@ -1,4 +1,4 @@
-use crate::{get_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::prelude::*;
 use diesel::QueryDsl;
@@ -13,7 +13,7 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
 
@@ -36,7 +36,7 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
 
@@ -59,7 +59,7 @@ pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(open_sell_orders.filter(unique_id.eq(id)))
@@ -81,7 +81,7 @@ pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     diesel::delete(open_sell_orders.filter(unique_id.eq_any(ids)))
@@ -102,7 +102,7 @@ pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     open_sell_orders
@@ -122,7 +122,7 @@ pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnecti
     let retry_strategy = FixedInterval::from_millis(1).take(15);
 
     Retry::spawn(retry_strategy, || async {
-        let mut connection = get_connection(pool.clone())
+        let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     open_sell_orders
