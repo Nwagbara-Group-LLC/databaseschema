@@ -1,12 +1,12 @@
 use crate::{get_timescale_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenSellOrder) -> OpenSellOrder {
+pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenSellOrder) -> Result<OpenSellOrder, Error> {
     println!("Creating open sell order: {:?}", order);
     use crate::schema::open_sell_orders::dsl::*;
     
@@ -26,10 +26,10 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
             eprintln!("Error saving new open sell order: {}", e);
             e
         })
-    }).await.expect("Error creating new open sell order")
+    }).await
 }
 
-pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenSellOrder>) -> Vec<OpenSellOrder> {
+pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenSellOrder>) -> Result<Vec<OpenSellOrder>, Error> {
     println!("Creating open sell order: {:?}", orders);
     use crate::schema::open_sell_orders::dsl::*;
 
@@ -49,10 +49,10 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
             eprintln!("Error saving new open sell order: {}", e);
             e
         })
-    }).await.expect("Error creating new open sell order")
+    }).await
 }
 
-pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) {
+pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
     println!("Deleting open sell order");
     use crate::schema::open_sell_orders::dsl::*;
 
@@ -71,10 +71,9 @@ pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         })
     })
         .await
-        .expect("Error deleting open sell order");
 }
 
-pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) {
+pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
     println!("Deleting open sell orders: {:?}", ids);
     use crate::schema::open_sell_orders::dsl::*;
 
@@ -92,10 +91,9 @@ pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
             e
         })
     }).await
-    .expect("Error deleting open sell orders");
 }
 
-pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<OpenSellOrder> {
+pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<OpenSellOrder>, Error> {
     println!("Getting open sell orders");
     use crate::schema::open_sell_orders::dsl::*;
 
@@ -112,10 +110,10 @@ pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>
             eprintln!("Error loading open sell orders: {}", e);
             e
         })
-    }).await.expect("Error getting open sell orders")
+    }).await
 }
 
-pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<OpenSellOrder> {
+pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<OpenSellOrder>, Error> {
     println!("Getting open sell orders");
     use crate::schema::open_sell_orders::dsl::*;
 
@@ -133,5 +131,5 @@ pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnecti
             eprintln!("Error loading open sell orders: {}", e);
             e
         })
-    }).await.expect("Error getting open sell orders")
+    }).await
 }

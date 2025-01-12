@@ -2,12 +2,12 @@ use crate::{get_timescale_connection,
     models::open_sell_candlestick::OpenSellCandlestick,
     CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::{ExpressionMethods, QueryDsl};
+use diesel::{result::Error, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn get_open_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<OpenSellCandlestick> {
+pub async fn get_open_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<OpenSellCandlestick>, Error> {
     println!("Getting open sell candlesticks");
     use crate::schema::open_sell_candlestick_agg::dsl::*;
 
@@ -25,5 +25,5 @@ pub async fn get_open_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgCo
             eprintln!("Error loading open sell candlesticks: {}", e);
             e
         })
-    }).await.expect("Error getting open sell candlesticks")
+    }).await
 }

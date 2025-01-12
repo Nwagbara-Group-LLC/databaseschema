@@ -3,12 +3,12 @@ use std::sync::Arc;
 use crate::{get_timescale_connection, models::orderbook::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use uuid::Uuid;
 
-pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> OrderBook {
+pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
     println!("Creating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
@@ -29,10 +29,9 @@ pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
         })
     })
         .await
-        .expect("Error creating orderbook")
 }
 
-pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<OrderBook> {
+pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<OrderBook>, Error> {
     println!("Getting orderbooks");
     use crate::schema::order_books::dsl::*;
 
@@ -49,10 +48,10 @@ pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
             eprintln!("Error loading orderbooks: {}", e);
             e
         })
-    }).await.expect("Error getting orderbooks")
+    }).await
 }
 
-pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: OrderBook, volume: BigDecimal) -> OrderBook {
+pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: OrderBook, volume: BigDecimal) -> Result<OrderBook, Error> {
     println!("Updating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
@@ -71,10 +70,10 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
                 e
             })
     })
-    .await.expect("Error updating orderbook")
+    .await
 }
 
-pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> OrderBook {
+pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> Result<OrderBook, Error> {
     println!("Getting orderbook by exchange id");
     use crate::schema::order_books::dsl::*;
 
@@ -92,10 +91,10 @@ pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnection
             eprintln!("Error loading orderbook: {}", e);
             e
         })
-    }).await.expect("Error getting orderbook")
+    }).await
 }
 
-pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> OrderBook {
+pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<OrderBook, Error> {
     println!("Getting orderbook by symbol");
     use crate::schema::order_books::dsl::*;
 
@@ -113,10 +112,10 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
             eprintln!("Error loading orderbook: {}", e);
             e
         })
-    }).await.expect("Error getting orderbook")
+    }).await
 }
 
-pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> bool {
+pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> Result<bool, Error> {
     println!("Checking if orderbook exists");
     use crate::schema::order_books::dsl::*;
 
@@ -130,9 +129,10 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, x
         .filter(exchange_id.eq(xchange_id))
         .first::<OrderBook>(&mut connection)
         .await
+        .map(|_| true)
         .map_err(|e| {
             eprintln!("Error loading orderbook: {}", e);
             e
         })
-    }).await.is_ok()
+    }).await
 }

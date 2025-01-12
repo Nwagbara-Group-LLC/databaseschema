@@ -1,11 +1,11 @@
 use crate::{get_timescale_connection, models::modified_sell_candlestick::ModifiedSellCandlestick, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::{ExpressionMethods, QueryDsl};
+use diesel::{result::Error, ExpressionMethods, QueryDsl};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn get_modified_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<ModifiedSellCandlestick> {
+pub async fn get_modified_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<ModifiedSellCandlestick>, Error> {
     println!("Getting modified sell candlesticks");
     use crate::schema::modified_sell_candlestick_agg::dsl::*;
 
@@ -23,5 +23,5 @@ pub async fn get_modified_sell_candlesticks_by_symbol(pool: Arc<Pool<CustomAsync
             eprintln!("Error loading modified sell candlesticks: {}", e);
             e
         })
-    }).await.expect("Error getting modified sell candlesticks")
+    }).await
 }

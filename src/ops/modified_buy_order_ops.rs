@@ -1,12 +1,12 @@
 use crate::{get_timescale_connection, models::modified_buy_order::{ModifiedBuyOrder, NewModifiedBuyOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn create_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewModifiedBuyOrder) -> ModifiedBuyOrder {
+pub async fn create_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewModifiedBuyOrder) -> Result<ModifiedBuyOrder, Error> {
     println!("Creating modified buy order: {:?}", order);
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -25,10 +25,10 @@ pub async fn create_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionMan
             eprintln!("Error saving new modified buy order: {}", e);
             e
         })
-    }).await.expect("Error getting open buy candlesticks")
+    }).await
 }
 
-pub async fn create_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewModifiedBuyOrder>) -> Vec<ModifiedBuyOrder> {
+pub async fn create_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewModifiedBuyOrder>) -> Result<Vec<ModifiedBuyOrder>, Error> {
     println!("Creating modified buy orders: {:?}", orders);
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -47,10 +47,10 @@ pub async fn create_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
             eprintln!("Error saving new modified buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting open buy candlesticks")
+    }).await
 }
 
-pub async fn delete_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) {
+pub async fn delete_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
     println!("Deleting modified buy order");
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -67,10 +67,10 @@ pub async fn delete_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionMan
             eprintln!("Error deleting modified buy order: {}", e);
             e
         })
-    }).await.expect("Error getting open buy candlesticks");
+    }).await
 }
 
-pub async fn delete_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) {
+pub async fn delete_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
     println!("Deleting modified buy orders: {:?}", ids);
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -87,10 +87,10 @@ pub async fn delete_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
             eprintln!("Error deleting modified buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting open buy candlesticks");
+    }).await
 }
 
-pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<ModifiedBuyOrder> {
+pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<ModifiedBuyOrder>, Error> {
     println!("Getting modified buy orders");
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -107,10 +107,10 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
             eprintln!("Error loading modified buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting modified buy orders")
+    }).await
 }
 
-pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<ModifiedBuyOrder> {
+pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<ModifiedBuyOrder>, Error> {
     println!("Getting modified buy orders");
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -128,5 +128,5 @@ pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConne
             eprintln!("Error loading modified buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting modified buy orders")
+    }).await
 }

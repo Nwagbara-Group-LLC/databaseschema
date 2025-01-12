@@ -1,12 +1,12 @@
 use crate::{get_timescale_connection, models::open_buy_order::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenBuyOrder) -> OpenBuyOrder {
+pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenBuyOrder) -> Result<OpenBuyOrder, Error> {
     println!("Creating open buy order: {:?}", order);
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -25,10 +25,10 @@ pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
             eprintln!("Error saving new open buy order: {}", e);
             e
         })
-    }).await.expect("Error creating new open buy order")
+    }).await
 }
 
-pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenBuyOrder>) -> Vec<OpenBuyOrder> {
+pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenBuyOrder>) -> Result<Vec<OpenBuyOrder>, Error> {
     println!("Creating open buy orders: {:?}", orders);
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -47,10 +47,10 @@ pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
             eprintln!("Error saving new open buy orders: {}", e);
             e
         })
-    }).await.expect("Error creating new open buy orders")
+    }).await
 }
 
-pub async fn delete_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) {
+pub async fn delete_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
     println!("Deleting open buy order");
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -67,10 +67,10 @@ pub async fn delete_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
             eprintln!("Error deleting open buy order: {}", e);
             e
         })
-    }).await.expect("Error deleting open buy order");
+    }).await
 }
 
-pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) {
+pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
     println!("Deleting open buy orders: {:?}", ids);
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -87,10 +87,10 @@ pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
             eprintln!("Error deleting open buy orders: {}", e);
             e
         })
-    }).await.expect("Error deleting open buy orders");
+    }).await
 }
 
-pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<OpenBuyOrder> {
+pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<OpenBuyOrder>, Error> {
     println!("Getting open buy orders");
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -107,10 +107,10 @@ pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting open buy orders")
+    }).await
 }
 
-pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<OpenBuyOrder> {
+pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<OpenBuyOrder>, Error> {
     println!("Getting open buy orders");
     use crate::schema::open_buy_orders::dsl::*;
 
@@ -128,5 +128,5 @@ pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectio
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await.expect("Error getting open buy orders")
+    }).await
 }

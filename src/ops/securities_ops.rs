@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::{get_timescale_connection, models::security::{NewSecurity, Security}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 
-pub async fn create_security(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, new_security: NewSecurity) -> Security {
+pub async fn create_security(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, new_security: NewSecurity) -> Result<Security, Error> {
     println!("Creating security: {:?}", new_security);
     use crate::schema::securities::dsl::*;
 
@@ -23,10 +23,10 @@ pub async fn create_security(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
             eprintln!("Error saving new security: {}", e);
             e
         })
-    }).await.expect("Error creating security")
+    }).await
 }
 
-pub async fn get_securities(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<Security> {
+pub async fn get_securities(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<Security>, Error> {
     println!("Getting securities");
     use crate::schema::securities::dsl::*;
 
@@ -41,10 +41,10 @@ pub async fn get_securities(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
             eprintln!("Error loading securities: {}", e);
             e
         })
-    }).await.expect("Error getting securities")
+    }).await
 }
 
-pub async fn get_securities_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, get_security: Security) -> Security {
+pub async fn get_securities_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, get_security: Security) -> Result<Security, Error> {
     println!("Getting security");
     use crate::schema::securities::dsl::*;
 
@@ -60,10 +60,10 @@ pub async fn get_securities_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>
             eprintln!("Error loading security: {}", e);
             e
         })
-    }).await.expect("Error getting security")
+    }).await
 }
 
-pub async fn get_security_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> Security {
+pub async fn get_security_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> Result<Security, Error> {
     println!("Getting security");
     use crate::schema::securities::dsl::*;
 
@@ -79,12 +79,12 @@ pub async fn get_security_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManage
             eprintln!("Error loading security: {}", e);
             e
         })
-    }).await.expect("Error getting security")
+    }).await
 
     
 }
 
-pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> bool {
+pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> Result<bool, Error> {
     println!("Checking if security exists");
     use crate::schema::securities::dsl::*;
 
@@ -96,9 +96,10 @@ pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sy
         .filter(symbol.eq(sym))
         .first::<Security>(&mut connection)
         .await
+        .map(|_| true)
         .map_err(|e| {
             eprintln!("Error loading security: {}", e);
             e
         })
-    }).await.is_ok()
+    }).await
 }

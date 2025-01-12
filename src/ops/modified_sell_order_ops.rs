@@ -4,7 +4,7 @@ use crate::{
     CustomAsyncPgConnectionManager,
 };
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub async fn create_modified_sell_order(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
     order: NewModifiedSellOrder,
-) -> ModifiedSellOrder {
+) -> Result<ModifiedSellOrder, Error> {
     println!("Creating modified sell order: {:?}", order);
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -33,13 +33,13 @@ pub async fn create_modified_sell_order(
             eprintln!("Error saving new modified sell order: {}", e);
             e
         })
-    }).await.expect("Error creating new modified sell order")
+    }).await
 }
 
 pub async fn create_modified_sell_orders(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
     orders: Vec<NewModifiedSellOrder>,
-) -> Vec<ModifiedSellOrder> {
+) -> Result<Vec<ModifiedSellOrder>, Error> {
     println!("Creating modified sell orders: {:?}", orders);
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -59,10 +59,10 @@ pub async fn create_modified_sell_orders(
             eprintln!("Error saving new modified sell orders: {}", e);
             e
         })
-    }).await.expect("Error creating new modified sell orders")
+    }).await
 }
 
-pub async fn delete_modified_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) {
+pub async fn delete_modified_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
     println!("Deleting modified sell order");
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -79,10 +79,10 @@ pub async fn delete_modified_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
             eprintln!("Error deleting modified sell order: {}", e);
             e
         })
-    }).await.expect("Error deleting modified sell order");
+    }).await
 }
 
-pub async fn delete_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) {
+pub async fn delete_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
     println!("Deleting modified sell orders: {:?}", ids);
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -99,10 +99,10 @@ pub async fn delete_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
             eprintln!("Error deleting modified sell orders: {}", e);
             e
         })
-    }).await.expect("Error deleting modified sell orders");
+    }).await
 }
 
-pub async fn get_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Vec<ModifiedSellOrder> {
+pub async fn get_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<ModifiedSellOrder>, Error> {
     println!("Getting modified sell orders");
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -119,10 +119,10 @@ pub async fn get_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
             eprintln!("Error loading modified sell orders: {}", e);
             e
         })
-    }).await.expect("Error getting modified sell orders")
+    }).await
 }
 
-pub async fn get_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<ModifiedSellOrder> {
+pub async fn get_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<ModifiedSellOrder>, Error> {
     println!("Getting modified sell orders");
     use crate::schema::modified_sell_orders::dsl::*;
 
@@ -140,5 +140,5 @@ pub async fn get_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConn
             eprintln!("Error loading modified sell orders: {}", e);
             e
         })
-    }).await.expect("Error getting modified sell orders")
+    }).await
 }

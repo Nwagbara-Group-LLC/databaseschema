@@ -1,11 +1,11 @@
 use crate::{get_timescale_connection, models::trade::{NewTrade, Trade}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
 use std::sync::Arc;
 
-pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewTrade>) -> Vec<Trade> {
+pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewTrade>) -> Result<Vec<Trade>, Error> {
     println!("Creating trades: {:?}", orders);
     use crate::schema::trades::dsl::*;
 
@@ -24,10 +24,10 @@ pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orde
             eprintln!("Error saving new trades: {}", e);
             e
         })
-    }).await.expect("Error creating trades")
+    }).await
 }
 
-pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Vec<Trade> {
+pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<Trade>, Error> {
     println!("Getting trades by symbol");
     use crate::schema::trades::dsl::*;
 
@@ -46,5 +46,5 @@ pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>
                 eprintln!("Error loading trades: {}", e);
                 e
             })
-    }).await.expect("Error getting trades")
+    }).await
 }
