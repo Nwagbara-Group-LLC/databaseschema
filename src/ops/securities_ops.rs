@@ -84,7 +84,7 @@ pub async fn get_security_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManage
     
 }
 
-pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> Result<bool, Error> {
+pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &String) -> bool {
     println!("Checking if security exists");
     use crate::schema::securities::dsl::*;
 
@@ -96,10 +96,9 @@ pub async fn security_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sy
         .filter(symbol.eq(sym))
         .first::<Security>(&mut connection)
         .await
-        .map(|_| true)
         .map_err(|e| {
             eprintln!("Error loading security: {}", e);
             e
         })
-    }).await
+    }).await.is_ok()
 }

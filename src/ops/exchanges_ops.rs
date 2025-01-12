@@ -89,7 +89,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
     }).await
 }
 
-pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> Result<bool, Error> {
+pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> bool {
     println!("Checking if exchange exists");
     use crate::schema::exchanges::dsl::*;
 
@@ -103,10 +103,9 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, na
             .filter(exchange.eq(name))
             .first::<Exchange>(&mut connection)
             .await
-            .map(|_| true) // Map the successful result to true
             .map_err(|e| {
                 eprintln!("Error loading exchange: {}", e);
                 e
             })
-    }).await
+    }).await.is_ok()
 }

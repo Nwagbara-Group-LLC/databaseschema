@@ -115,7 +115,7 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
     }).await
 }
 
-pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> Result<bool, Error> {
+pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> bool {
     println!("Checking if orderbook exists");
     use crate::schema::order_books::dsl::*;
 
@@ -129,10 +129,9 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, x
         .filter(exchange_id.eq(xchange_id))
         .first::<OrderBook>(&mut connection)
         .await
-        .map(|_| true)
         .map_err(|e| {
             eprintln!("Error loading orderbook: {}", e);
             e
         })
-    }).await
+    }).await.is_ok()
 }
