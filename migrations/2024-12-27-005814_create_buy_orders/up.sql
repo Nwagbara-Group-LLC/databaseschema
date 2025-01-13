@@ -1,10 +1,10 @@
 -- Your SQL goes here
 CREATE TABLE IF NOT EXISTS open_buy_orders (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    symbol VARCHAR(7) NOT NULL REFERENCES order_books (symbol),
-    exchange VARCHAR(8) NOT NULL REFERENCES order_books (exchange),
-    security_id UUID NOT NULL REFERENCES order_books (security_id),
-    exchange_id UUID NOT NULL REFERENCES order_books (exchange_id),
+    symbol VARCHAR(7) NOT NULL REFERENCES securities (symbol),
+    exchange VARCHAR(8) NOT NULL REFERENCES exchanges (exchange),
+    security_id UUID NOT NULL REFERENCES securities (security_id),
+    exchange_id UUID NOT NULL REFERENCES exchanges (exchange_id),
     buy_order_book_id UUID NOT NULL REFERENCES order_books (buy_order_book_id),
     unique_id VARCHAR(255) NOT NULL,
     price_level NUMERIC NOT NULL,
