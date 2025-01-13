@@ -6,6 +6,7 @@ use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
+use uuid::Uuid;
 
 pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
     println!("Creating orderbook: {:?}", orderbook);
@@ -79,7 +80,7 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     .await
 }
 
-pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<OrderBook, Error> {
+pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
     println!("Getting orderbook by symbol");
     use crate::schema::order_books::dsl::*;
 
@@ -90,7 +91,7 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
         .await
         .expect("Error connecting to database");
     order_books
-        .filter(symbol.eq(sym))
+        .filter(exchange_id.eq(e_id).and(security_id.eq(s_id)))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
@@ -100,8 +101,8 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
     }).await
 }
 
-pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> bool {
-    println!("Checking if orderbook exists: {}", sym);
+pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, s_id: Uuid) -> bool {
+    println!("Checking if orderbook exists: {}", s_id);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = FixedInterval::from_millis(1).take(15);
@@ -111,7 +112,7 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, s
         .await
         .expect("Error connecting to database");
     order_books
-        .filter(symbol.eq(sym))
+        .filter(security_id.eq(s_id))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
