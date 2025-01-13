@@ -101,7 +101,7 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
 }
 
 pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> bool {
-    println!("Checking if orderbook exists");
+    println!("Checking if orderbook exists: {}", sym);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = FixedInterval::from_millis(1).take(15);
