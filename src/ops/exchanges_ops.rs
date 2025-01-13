@@ -24,7 +24,7 @@ pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
             .await?;
 
         exchanges
-            .filter(name.eq(&new_exchange.name))
+            .filter(exchange_name.eq(&new_exchange.exchange_name))
             .first(&mut connection)
             .await
             .map_err(|e| {
@@ -75,7 +75,7 @@ pub async fn get_exchanges_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
     }).await
 }
 
-pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, exchange_name: &String) -> Result<Exchange, Error> {
+pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> Result<Exchange, Error> {
     println!("Getting exchange");
     use crate::schema::exchanges::dsl::*;
 
@@ -86,7 +86,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(name.eq(exchange_name))
+            .filter(exchange_name.eq(name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {
@@ -96,7 +96,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
     }).await
 }
 
-pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, exchange_name: &String) -> bool {
+pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> bool {
     println!("Checking if exchange exists");
     use crate::schema::exchanges::dsl::*;
 
@@ -107,7 +107,7 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ex
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(name.eq(exchange_name))
+            .filter(exchange_name.eq(name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {
