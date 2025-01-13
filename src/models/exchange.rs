@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::schema::exchanges;
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = exchanges)]
 pub struct NewExchange {
     pub exchange: String,

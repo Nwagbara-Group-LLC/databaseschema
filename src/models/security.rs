@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::schema::securities;
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = securities)]
 pub struct NewSecurity {
     pub symbol: String,

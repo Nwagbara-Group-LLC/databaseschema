@@ -15,13 +15,27 @@ pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
-        diesel::insert_into(exchanges)
+        let result = diesel::insert_into(exchanges)
             .values(&new_exchange)
-            .returning(Exchange::as_returning())
-            .get_result(&mut connection)
+            .on_conflict(exchange_id)
+            .do_update()
+            .set(&new_exchange)
+            .execute(&mut connection)
+            .await;
+
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Error saving new exchange: {}", e);
+            }
+        }
+
+        exchanges
+            .filter(exchange.eq(&new_exchange.exchange))
+            .first(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error saving new exchange: {}", e);
+                eprintln!("Error fetching new exchange: {}", e);
                 e
             })
     }).await
