@@ -1,6 +1,6 @@
 use crate::{get_timescale_connection, models::open_buy_order::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::{prelude::*, result::Error};
+use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
@@ -16,15 +16,29 @@ pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    diesel::insert_into(open_buy_orders)
-        .values(&order)
-        .returning(OpenBuyOrder::as_returning())
-        .get_result(&mut connection)
-        .await
-        .map_err(|e| {
-            eprintln!("Error saving new open buy order: {}", e);
-            e
-        })
+    let result = diesel::insert_into(open_buy_orders)
+            .values(&order)
+            .on_conflict(unique_id)
+            .do_update()
+            .set(&order)
+            .execute(&mut connection)
+            .await;
+
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Error saving new open buy order: {}", e);
+            }
+        }
+
+        open_buy_orders
+            .filter(unique_id.eq(&order.unique_id))
+            .first(&mut connection)
+            .await
+            .map_err(|e| {
+                eprintln!("Error fetching new open buy order: {}", e);
+                e
+            })
     }).await
 }
 
@@ -38,15 +52,34 @@ pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    diesel::insert_into(open_buy_orders)
-        .values(&orders)
-        .returning(OpenBuyOrder::as_returning())
-        .get_results(&mut connection)
-        .await
-        .map_err(|e| {
-            eprintln!("Error saving new open buy orders: {}", e);
-            e
-        })
+    let result = diesel::insert_into(open_buy_orders)
+            .values(&orders)
+            .on_conflict(unique_id)
+            .do_update()
+            .set((
+                // Specify the columns you want to update here
+                price_level.eq(excluded(price_level)),
+                buy_quantity.eq(excluded(buy_quantity)),
+                // Add more columns as needed
+            ))
+            .execute(&mut connection)
+            .await;
+
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Error saving new open buy orders: {}", e);
+            }
+        }
+
+        open_buy_orders
+            .filter(unique_id.eq_any(orders.iter().map(|order| order.unique_id.clone())))
+            .load::<OpenBuyOrder>(&mut connection)
+            .await
+            .map_err(|e| {
+                eprintln!("Error fetching new open buy orders: {}", e);
+                e
+            })
     }).await
 }
 

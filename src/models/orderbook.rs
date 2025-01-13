@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::schema::order_books;
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = order_books)]
 pub struct NewOrderBook {
     pub symbol: String,

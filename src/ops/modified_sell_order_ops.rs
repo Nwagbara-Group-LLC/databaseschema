@@ -4,7 +4,7 @@ use crate::{
     CustomAsyncPgConnectionManager,
 };
 use deadpool::managed::Pool;
-use diesel::{prelude::*, result::Error};
+use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
@@ -24,13 +24,27 @@ pub async fn create_modified_sell_order(
         .await
         .expect("Error connecting to database");
 
-    diesel::insert_into(modified_sell_orders)
+        let result = diesel::insert_into(modified_sell_orders)
         .values(&order)
-        .returning(ModifiedSellOrder::as_returning())
-        .get_result(&mut connection)
+        .on_conflict(unique_id)
+        .do_update()
+        .set(&order)
+        .execute(&mut connection)
+        .await;
+
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Error saving new modified sell order: {}", e);
+        }
+    }
+
+    modified_sell_orders
+        .filter(unique_id.eq(&order.unique_id))
+        .first(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error saving new modified sell order: {}", e);
+            eprintln!("Error fetching new modified sell order: {}", e);
             e
         })
     }).await
@@ -50,13 +64,32 @@ pub async fn create_modified_sell_orders(
         .await
         .expect("Error connecting to database");
 
-    diesel::insert_into(modified_sell_orders)
+        let result = diesel::insert_into(modified_sell_orders)
         .values(&orders)
-        .returning(ModifiedSellOrder::as_returning())
-        .get_results(&mut connection)
+        .on_conflict(unique_id)
+        .do_update()
+        .set((
+            // Specify the columns you want to update here
+            price_level.eq(excluded(price_level)),
+            new_sell_quantity.eq(excluded(new_sell_quantity)),
+            // Add more columns as needed
+        ))
+        .execute(&mut connection)
+        .await;
+
+    match result {
+        Ok(_) => {},
+        Err(e) => {
+            eprintln!("Error saving new modified sell orders: {}", e);
+        }
+    }
+
+    modified_sell_orders
+        .filter(unique_id.eq_any(orders.iter().map(|order| order.unique_id.clone())))
+        .load::<ModifiedSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error saving new modified sell orders: {}", e);
+            eprintln!("Error fetching new modified sell orders: {}", e);
             e
         })
     }).await

@@ -1,6 +1,6 @@
 use crate::{get_timescale_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
-use diesel::{prelude::*, result::Error};
+use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
@@ -17,15 +17,29 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         .await
         .expect("Error connecting to database");
 
-    diesel::insert_into(open_sell_orders)
+    let result = diesel::insert_into(open_sell_orders)
         .values(&order)
-        .returning(OpenSellOrder::as_returning())
-        .get_result(&mut connection)
-        .await
-        .map_err(|e| {
-            eprintln!("Error saving new open sell order: {}", e);
-            e
-        })
+        .on_conflict(unique_id)
+        .do_update()
+        .set(&order)
+        .execute(&mut connection)
+            .await;
+
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Error saving new open buy order: {}", e);
+            }
+        }
+
+        open_sell_orders
+            .filter(unique_id.eq(&order.unique_id))
+            .first(&mut connection)
+            .await
+            .map_err(|e| {
+                eprintln!("Error fetching new open sell order: {}", e);
+                e
+            })
     }).await
 }
 
@@ -40,13 +54,32 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
         .await
         .expect("Error connecting to database");
 
-    diesel::insert_into(open_sell_orders)
+        let result = diesel::insert_into(open_sell_orders)
         .values(&orders)
-        .returning(OpenSellOrder::as_returning())
-        .get_results(&mut connection)
+        .on_conflict(unique_id)
+        .do_update()
+        .set((
+            // Specify the columns you want to update here
+            price_level.eq(excluded(price_level)),
+            sell_quantity.eq(excluded(sell_quantity)),
+            // Add more columns as needed
+        ))
+        .execute(&mut connection)
+        .await;
+
+        match result {
+            Ok(_) => {},
+            Err(e) => {
+                eprintln!("Error saving new open sell orders: {}", e);
+            }
+        }
+
+    open_sell_orders
+        .filter(unique_id.eq_any(orders.iter().map(|order| order.unique_id.clone())))
+        .load::<OpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error saving new open sell order: {}", e);
+            eprintln!("Error fetching new open buy orders: {}", e);
             e
         })
     }).await
