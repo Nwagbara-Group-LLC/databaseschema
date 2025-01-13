@@ -6,7 +6,6 @@ use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::FixedInterval, Retry};
-use uuid::Uuid;
 
 pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
     println!("Creating orderbook: {:?}", orderbook);
@@ -87,27 +86,6 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     .await
 }
 
-pub async fn get_orderbook_by_exchange_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> Result<OrderBook, Error> {
-    println!("Getting orderbook by exchange id");
-    use crate::schema::order_books::dsl::*;
-
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
-
-    Retry::spawn(retry_strategy, || async {
-        let mut connection = get_timescale_connection(pool.clone())
-        .await
-        .expect("Error connecting to database");
-    order_books
-        .filter(exchange_id.eq(xchange_id))
-        .first::<OrderBook>(&mut connection)
-        .await
-        .map_err(|e| {
-            eprintln!("Error loading orderbook: {}", e);
-            e
-        })
-    }).await
-}
-
 pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<OrderBook, Error> {
     println!("Getting orderbook by symbol");
     use crate::schema::order_books::dsl::*;
@@ -129,7 +107,7 @@ pub async fn get_orderbook_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManag
     }).await
 }
 
-pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, xchange_id: &Uuid) -> bool {
+pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> bool {
     println!("Checking if orderbook exists");
     use crate::schema::order_books::dsl::*;
 
@@ -140,7 +118,7 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, x
         .await
         .expect("Error connecting to database");
     order_books
-        .filter(exchange_id.eq(xchange_id))
+        .filter(symbol.eq(sym))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
