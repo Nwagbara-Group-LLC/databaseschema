@@ -24,7 +24,7 @@ pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
             .await?;
 
         exchanges
-            .filter(exchange_name.eq(&new_exchange.exchange_name))
+            .filter(exchange.eq(&new_exchange.exchange))
             .first(&mut connection)
             .await
             .map_err(|e| {
@@ -65,7 +65,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(exchange_name.eq(name))
+            .filter(exchange.eq(name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {
@@ -86,7 +86,7 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, na
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(exchange_name.eq(name))
+            .filter(exchange.eq(name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {

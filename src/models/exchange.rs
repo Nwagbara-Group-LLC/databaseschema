@@ -10,12 +10,12 @@ use crate::schema::exchanges;
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = exchanges)]
 pub struct NewExchange {
-    pub exchange_name: String,
+    pub exchange: String,
 }
 
 impl NewExchange {
-    pub fn new(exchange_name: &String) -> NewExchange {
-        NewExchange { exchange_name: exchange_name.to_string() }
+    pub fn new(exchange: &String) -> NewExchange {
+        NewExchange { exchange: exchange.to_string() }
     }
 }
 
@@ -28,5 +28,5 @@ pub struct Exchange {
     #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub exchange_id: Uuid,
     #[diesel(sql_type = VarChar)]
-    pub exchange_name: String,
+    pub exchange: String,
 }

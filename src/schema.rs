@@ -5,7 +5,7 @@ diesel::table! {
         created_at -> Timestamptz,
         exchange_id -> Uuid,
         #[max_length = 8]
-        exchange_name -> Varchar,
+        exchange -> Varchar,
     }
 }
 
