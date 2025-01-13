@@ -14,20 +14,13 @@ pub async fn create_security(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone()).await.expect("Error connecting to database");
-        let result = diesel::insert_into(securities)
+        diesel::insert_into(securities)
         .values(&new_security)
         .on_conflict(security_id)
         .do_update()
         .set(&new_security)
         .execute(&mut connection)
-        .await;
-
-        match result {
-            Ok(_) => {},
-            Err(e) => {
-                eprintln!("Error saving new security: {}", e);
-            }
-        }
+        .await?;
 
         securities
         .filter(symbol.eq(&new_security.symbol))

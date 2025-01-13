@@ -17,7 +17,7 @@ pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orde
         .expect("Error connecting to database");
     let result = diesel::insert_into(trades)
         .values(&orders)
-        .on_conflict(trade_id)
+        .on_conflict((created_at, trade_id))
         .do_update()
         .set((
             side.eq(excluded(side)),

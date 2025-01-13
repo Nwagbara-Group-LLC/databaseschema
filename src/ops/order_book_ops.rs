@@ -17,20 +17,13 @@ pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    let result = diesel::insert_into(order_books)
+    diesel::insert_into(order_books)
         .values(&orderbook)
         .on_conflict(order_book_id)
         .do_update()
         .set(&orderbook)
         .execute(&mut connection)
-        .await;
-
-    match result {
-        Ok(_) => {},
-        Err(e) => {
-            eprintln!("Error saving new orderbook: {}", e);
-        }
-    }
+        .await?;
 
     order_books
         .filter(security_id.eq(&orderbook.security_id))

@@ -19,7 +19,7 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
 
     let result = diesel::insert_into(open_sell_orders)
         .values(&order)
-        .on_conflict(unique_id)
+        .on_conflict((created_at, unique_id))
         .do_update()
         .set(&order)
         .execute(&mut connection)
@@ -56,7 +56,7 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
 
         let result = diesel::insert_into(open_sell_orders)
         .values(&orders)
-        .on_conflict(unique_id)
+        .on_conflict((created_at, unique_id))
         .do_update()
         .set((
             // Specify the columns you want to update here

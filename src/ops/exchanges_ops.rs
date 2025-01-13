@@ -15,23 +15,16 @@ pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ne
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .expect("Error connecting to database");
-        let result = diesel::insert_into(exchanges)
+        diesel::insert_into(exchanges)
             .values(&new_exchange)
             .on_conflict(exchange_id)
             .do_update()
             .set(&new_exchange)
             .execute(&mut connection)
-            .await;
-
-        match result {
-            Ok(_) => {},
-            Err(e) => {
-                eprintln!("Error saving new exchange: {}", e);
-            }
-        }
+            .await?;
 
         exchanges
-            .filter(exchange.eq(&new_exchange.exchange))
+            .filter(name.eq(&new_exchange.name))
             .first(&mut connection)
             .await
             .map_err(|e| {
@@ -82,7 +75,7 @@ pub async fn get_exchanges_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
     }).await
 }
 
-pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> Result<Exchange, Error> {
+pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, exchange_name: &String) -> Result<Exchange, Error> {
     println!("Getting exchange");
     use crate::schema::exchanges::dsl::*;
 
@@ -93,7 +86,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(exchange.eq(name))
+            .filter(name.eq(exchange_name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {
@@ -103,7 +96,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
     }).await
 }
 
-pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> bool {
+pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, exchange_name: &String) -> bool {
     println!("Checking if exchange exists");
     use crate::schema::exchanges::dsl::*;
 
@@ -114,7 +107,7 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, na
             .await
             .expect("Error connecting to database");
         exchanges
-            .filter(exchange.eq(name))
+            .filter(name.eq(exchange_name))
             .first::<Exchange>(&mut connection)
             .await
             .map_err(|e| {
