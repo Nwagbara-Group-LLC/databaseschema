@@ -54,27 +54,6 @@ pub async fn get_exchanges(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> R
     }).await
 }
 
-pub async fn get_exchanges_by_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, get_exchange: Exchange) -> Result<Exchange, Error> {
-    println!("Getting exchange");
-    use crate::schema::exchanges::dsl::*;
-
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
-
-    Retry::spawn(retry_strategy, || async {
-        let mut connection = get_timescale_connection(pool.clone())
-            .await
-            .expect("Error connecting to database");
-        exchanges
-            .find(get_exchange.exchange_id)
-            .first::<Exchange>(&mut connection)
-            .await
-            .map_err(|e| {
-                eprintln!("Error loading exchange: {}", e);
-                e
-            })
-    }).await
-}
-
 pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, name: &String) -> Result<Exchange, Error> {
     println!("Getting exchange");
     use crate::schema::exchanges::dsl::*;
