@@ -3,14 +3,14 @@ use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
-use tokio_retry::{strategy::FixedInterval, Retry};
+use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
 
 pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenSellOrder) -> Result<OpenSellOrder, Error> {
     println!("Creating open sell order: {:?}", order);
     use crate::schema::open_sell_orders::dsl::*;
     
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -47,7 +47,7 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     println!("Creating open sell order: {:?}", orders);
     use crate::schema::open_sell_orders::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -89,7 +89,7 @@ pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
     println!("Deleting open sell order");
     use crate::schema::open_sell_orders::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -110,7 +110,7 @@ pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     println!("Deleting open sell orders: {:?}", ids);
     use crate::schema::open_sell_orders::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -130,7 +130,7 @@ pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>
     println!("Getting open sell orders");
     use crate::schema::open_sell_orders::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -150,7 +150,7 @@ pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnecti
     println!("Getting open sell orders");
     use crate::schema::open_sell_orders::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())

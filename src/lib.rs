@@ -8,7 +8,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use dotenv::dotenv;
 use native_tls::TlsConnector;
 use postgres_native_tls::MakeTlsConnector;
-use tokio_retry::{strategy::FixedInterval, Retry};
+use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::{env, sync::Arc};
 use tokio_postgres::Config;
 
@@ -98,7 +98,7 @@ pub async fn get_timescale_connection(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
 ) -> Result<Object<CustomAsyncPgConnectionManager>> {
     println!("Getting database connection from pool");
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         Ok(pool.get().await.map_err(|e| {
