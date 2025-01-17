@@ -26,7 +26,7 @@ pub async fn create_modified_sell_order(
 
         let result = diesel::insert_into(modified_sell_orders)
         .values(&order)
-        .on_conflict((created_at, unique_id))
+        .on_conflict(unique_id)
         .do_update()
         .set(&order)
         .execute(&mut connection)
@@ -68,7 +68,7 @@ pub async fn create_modified_sell_orders(
 
         let result = diesel::insert_into(modified_sell_orders)
         .values(&orders)
-        .on_conflict((created_at, unique_id))
+        .on_conflict(unique_id)
         .do_update()
         .set((
             // Specify the columns you want to update here

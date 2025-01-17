@@ -18,7 +18,7 @@ pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
         .expect("Error connecting to database");
     let result = diesel::insert_into(open_buy_orders)
             .values(&order)
-            .on_conflict((created_at, unique_id))
+            .on_conflict(unique_id)
             .do_update()
             .set(&order)
             .execute(&mut connection)
@@ -54,7 +54,7 @@ pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
         .expect("Error connecting to database");
     let result = diesel::insert_into(open_buy_orders)
             .values(&orders)
-            .on_conflict((created_at, unique_id))
+            .on_conflict(unique_id)
             .do_update()
             .set((
                 // Specify the columns you want to update here
