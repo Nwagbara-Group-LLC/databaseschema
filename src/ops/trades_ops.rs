@@ -2,14 +2,14 @@ use crate::{get_timescale_connection, models::trade::{NewTrade, Trade}, CustomAs
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel_async::RunQueryDsl;
-use tokio_retry::{strategy::FixedInterval, Retry};
+use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
 
 pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewTrade>) -> Result<(), Error> {
     println!("Creating trades: {:?}", orders);
     use crate::schema::trades::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -43,7 +43,7 @@ pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>
     println!("Getting trades by symbol");
     use crate::schema::trades::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())

@@ -2,14 +2,14 @@ use crate::{get_timescale_connection, models::exchange::{Exchange, NewExchange},
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
-use tokio_retry::{strategy::FixedInterval, Retry};
+use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
 
 pub async fn create_exchange(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, new_exchange: NewExchange) -> Result<Exchange, Error> {
     println!("Creating exchange: {:?}", new_exchange);
     use crate::schema::exchanges::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -38,7 +38,7 @@ pub async fn get_exchanges(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> R
     println!("Getting exchanges");
     use crate::schema::exchanges::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -58,7 +58,7 @@ pub async fn get_exchanges_by_name(pool: Arc<Pool<CustomAsyncPgConnectionManager
     println!("Getting exchange");
     use crate::schema::exchanges::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -79,7 +79,7 @@ pub async fn exchange_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, na
     println!("Checking if exchange exists");
     use crate::schema::exchanges::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())

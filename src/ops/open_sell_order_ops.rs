@@ -28,7 +28,7 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         match result {
             Ok(_) => {},
             Err(e) => {
-                eprintln!("Error saving new open buy order: {}", e);
+                eprintln!("Error saving new open sell order: {}", e);
             }
         }
 
@@ -79,7 +79,7 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
         .load::<OpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error fetching new open buy orders: {}", e);
+            eprintln!("Error fetching new open sell orders: {}", e);
             e
         })
     }).await

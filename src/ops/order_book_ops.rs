@@ -4,14 +4,14 @@ use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
-use tokio_retry::{strategy::FixedInterval, Retry};
+use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use uuid::Uuid;
 
 pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
     println!("Creating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -41,7 +41,7 @@ pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
     println!("Getting orderbooks");
     use crate::schema::order_books::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -61,7 +61,7 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     println!("Updating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
@@ -79,18 +79,18 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     .await
 }
 
-pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
+pub async fn get_orderbook_by_orderbook_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o_id: Uuid) -> Result<OrderBook, Error> {
     println!("Getting orderbook by symbol");
     use crate::schema::order_books::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     order_books
-        .filter(exchange_id.eq(e_id).and(security_id.eq(s_id)))
+        .filter(order_book_id.eq(o_id))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
@@ -104,7 +104,7 @@ pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, s
     println!("Checking if orderbook exists: {}", s_id);
     use crate::schema::order_books::dsl::*;
 
-    let retry_strategy = FixedInterval::from_millis(1).take(15);
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
