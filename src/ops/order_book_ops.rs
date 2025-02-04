@@ -100,6 +100,27 @@ pub async fn get_orderbook_by_orderbook_id(pool: Arc<Pool<CustomAsyncPgConnectio
     }).await
 }
 
+pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
+    println!("Getting orderbook by symbol");
+    use crate::schema::order_books::dsl::*;
+
+    let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_timescale_connection(pool.clone())
+        .await
+        .expect("Error connecting to database");
+    order_books
+        .filter(exchange_id.eq(e_id).and(security_id.eq(s_id)))
+        .first::<OrderBook>(&mut connection)
+        .await
+        .map_err(|e| {
+            eprintln!("Error loading orderbook: {}", e);
+            e
+        })
+    }).await
+}
+
 pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, s_id: Uuid) -> bool {
     println!("Checking if orderbook exists: {}", s_id);
     use crate::schema::order_books::dsl::*;
