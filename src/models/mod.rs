@@ -1,12 +1,17 @@
 pub mod exchange;
 pub mod modified_buy_candlestick;
 pub mod modified_buy_order;
+pub mod sim_modified_buy_order;
 pub mod modified_sell_candlestick;
 pub mod modified_sell_order;
+pub mod sim_modified_sell_order;
 pub mod open_buy_candlestick;
 pub mod open_buy_order;
+pub mod sim_open_buy_order;
 pub mod open_sell_candlestick;
 pub mod open_sell_order;
+pub mod sim_open_sell_order;
 pub mod orderbook;
 pub mod trade;
+pub mod sim_trade;
 pub mod security;

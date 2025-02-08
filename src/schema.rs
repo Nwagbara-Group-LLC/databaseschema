@@ -164,6 +164,96 @@ diesel::table! {
 }
 
 diesel::table! {
+    sim_modified_buy_orders (created_at, backtest_id, unique_id) {
+        backtest_id -> Uuid,
+        created_at -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        buy_order_book_id -> Uuid,
+        #[max_length = 255]
+        unique_id -> Varchar,
+        price_level -> Numeric,
+        new_buy_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    sim_modified_sell_orders (created_at, backtest_id, unique_id) {
+        backtest_id -> Uuid,
+        created_at -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        sell_order_book_id -> Uuid,
+        #[max_length = 255]
+        unique_id -> Varchar,
+        price_level -> Numeric,
+        new_sell_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    sim_open_buy_orders (created_at, backtest_id, unique_id) {
+        backtest_id -> Uuid,
+        created_at -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        buy_order_book_id -> Uuid,
+        #[max_length = 255]
+        unique_id -> Varchar,
+        price_level -> Numeric,
+        buy_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    sim_open_sell_orders (created_at, unique_id) {
+        backtest_id -> Uuid,
+        created_at -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        sell_order_book_id -> Uuid,
+        #[max_length = 255]
+        unique_id -> Varchar,
+        price_level -> Numeric,
+        sell_quantity -> Numeric,
+    }
+}
+
+diesel::table! {
+    sim_trades (created_at, backtest_id, trade_id) {
+        backtest_id -> Uuid,
+        created_at -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        trade_id -> Uuid,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        #[max_length = 4]
+        side -> Varchar,
+        price -> Numeric,
+        quantity -> Numeric,
+    }
+}
+
+diesel::table! {
     trades (created_at, trade_id) {
         created_at -> Timestamptz,
         #[max_length = 7]
@@ -192,5 +282,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     open_sell_candlestick_agg,
     order_books,
     securities,
+    sim_modified_buy_orders,
+    sim_modified_sell_orders,
+    sim_open_buy_orders,
+    sim_open_sell_orders,
+    sim_trades,
     trades,
 );
