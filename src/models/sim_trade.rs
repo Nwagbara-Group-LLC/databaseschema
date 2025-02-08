@@ -10,7 +10,7 @@ use crate::schema::sim_trades;
 
 #[derive(Serialize, Deserialize, Debug, Insertable, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_trades)]
-pub struct NewTrade {
+pub struct NewSimTrade {
     pub symbol: String,
     pub exchange: String,
     pub security_id: Uuid,
@@ -20,7 +20,7 @@ pub struct NewTrade {
     pub quantity: BigDecimal,
 }
 
-impl NewTrade {
+impl NewSimTrade {
     pub fn new(
         symbol: &str,
         exchange: &str,
@@ -29,8 +29,8 @@ impl NewTrade {
         side: &str,
         price: &BigDecimal,
         quantity: &BigDecimal,
-    ) -> NewTrade {
-        NewTrade {
+    ) -> NewSimTrade {
+        NewSimTrade {
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
             security_id,
@@ -45,7 +45,7 @@ impl NewTrade {
 #[derive(Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_trades)]
 #[diesel(check_for_backend(Pg))]
-pub struct Trade {
+pub struct SimTrade {
     #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub backtest_id: Uuid,
     #[diesel(sql_type = Timestamptz)]

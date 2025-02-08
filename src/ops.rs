@@ -14,3 +14,4 @@ pub mod modified_sell_candlestick_ops;
 pub mod securities_ops;
 pub mod exchanges_ops;
 pub mod trades_ops;
+pub mod sim_trades_ops;
