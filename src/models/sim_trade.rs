@@ -11,6 +11,7 @@ use crate::schema::sim_trades;
 #[derive(Serialize, Deserialize, Debug, Insertable, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_trades)]
 pub struct NewSimTrade {
+    pub backtest_id: Uuid,
     pub symbol: String,
     pub exchange: String,
     pub security_id: Uuid,
@@ -22,6 +23,7 @@ pub struct NewSimTrade {
 
 impl NewSimTrade {
     pub fn new(
+        backtest_id: Uuid,
         symbol: &str,
         exchange: &str,
         security_id: Uuid,
@@ -31,6 +33,7 @@ impl NewSimTrade {
         quantity: &BigDecimal,
     ) -> NewSimTrade {
         NewSimTrade {
+            backtest_id,
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
             security_id,

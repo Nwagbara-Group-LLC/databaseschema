@@ -11,6 +11,7 @@ use crate::schema::sim_modified_sell_orders;
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = sim_modified_sell_orders)]
 pub struct NewSimModifiedSellOrder {
+    pub backtest_id: Uuid,
     pub symbol: String,
     pub exchange: String,
     pub security_id: Uuid,
@@ -23,6 +24,7 @@ pub struct NewSimModifiedSellOrder {
 
 impl NewSimModifiedSellOrder {
     pub fn new(
+        backtest_id: Uuid,
         symbol: &str,
         exchange: &str,
         security_id: Uuid,
@@ -33,6 +35,7 @@ impl NewSimModifiedSellOrder {
         new_sell_quantity: &BigDecimal,
     ) -> NewSimModifiedSellOrder {
         NewSimModifiedSellOrder {
+            backtest_id,
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
             security_id,
