@@ -142,6 +142,7 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
         .await
         .expect("Error connecting to database");
     modified_buy_orders
+        .order(price_level.desc())
         .load::<ModifiedBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
@@ -165,6 +166,7 @@ pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConne
         .expect("Error connecting to database");
     modified_buy_orders
     .filter(symbol.eq(sym))
+    .order(price_level.desc())
     .load::<ModifiedBuyOrder>(&mut connection)
         .await
         .map_err(|e| {

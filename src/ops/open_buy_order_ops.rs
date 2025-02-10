@@ -134,6 +134,7 @@ pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
         .await
         .expect("Error connecting to database");
     open_buy_orders
+        .order(price_level.desc())
         .load::<OpenBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
@@ -155,6 +156,7 @@ pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectio
         .expect("Error connecting to database");
     open_buy_orders
     .filter(symbol.eq(sym))
+    .order(price_level.desc())
     .load::<OpenBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
