@@ -142,6 +142,7 @@ pub async fn get_sim_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
         .await
         .expect("Error connecting to database");
     sim_modified_buy_orders
+        .order(price_level.desc())
         .load::<SimModifiedBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
@@ -165,6 +166,7 @@ pub async fn get_sim_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgC
         .expect("Error connecting to database");
     sim_modified_buy_orders
     .filter(symbol.eq(sym))
+    .order(price_level.desc())
     .load::<SimModifiedBuyOrder>(&mut connection)
         .await
         .map_err(|e| {

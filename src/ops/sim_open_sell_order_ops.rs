@@ -137,6 +137,7 @@ pub async fn get_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
         .await
         .expect("Error connecting to database");
     sim_open_sell_orders
+        .order(price_level.asc())
         .load::<SimOpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
@@ -158,6 +159,7 @@ pub async fn get_sim_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConn
         .expect("Error connecting to database");
     sim_open_sell_orders
     .filter(symbol.eq(sym))
+    .order(price_level.asc())
     .load::<SimOpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
