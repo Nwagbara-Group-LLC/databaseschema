@@ -45,7 +45,7 @@ impl NewSimTrade {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
+#[derive(Clone, Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_trades)]
 #[diesel(check_for_backend(Pg))]
 pub struct SimTrade {
