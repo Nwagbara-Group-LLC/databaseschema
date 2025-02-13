@@ -51,6 +51,7 @@ pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>
             .expect("Error connecting to database");
         trades
             .filter(symbol.eq(sym))
+            .order(created_at.asc())
             .select(Trade::as_select()) // Ensure the fields match
             .load::<Trade>(&mut connection)
             .await
