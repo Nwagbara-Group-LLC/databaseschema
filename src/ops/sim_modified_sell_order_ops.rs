@@ -3,12 +3,13 @@ use crate::{
     models::sim_modified_sell_order::{SimModifiedSellOrder, NewSimModifiedSellOrder},
     CustomAsyncPgConnectionManager,
 };
+use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 pub async fn create_sim_modified_sell_order(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
@@ -141,7 +142,7 @@ pub async fn delete_sim_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnect
     }).await
 }
 
-pub async fn get_sim_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<SimModifiedSellOrder>, Error> {
+pub async fn get_sim_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<BigDecimal, Vec<SimModifiedSellOrder>>, Error> {
     println!("Getting modified sell orders");
     use crate::schema::sim_modified_sell_orders::dsl::*;
 
@@ -149,22 +150,34 @@ pub async fn get_sim_modified_sell_orders(pool: Arc<Pool<CustomAsyncPgConnection
     .map(jitter)
     .take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     sim_modified_sell_orders
-        .order(price_level.asc())
         .load::<SimModifiedSellOrder>(&mut connection)
         .await
         .map_err(|e| {
             eprintln!("Error loading modified sell orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut sell_orderbook = BTreeMap::new();
+    for order in orders {
+        sell_orderbook.entry(order.price_level.clone())
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in sell_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &SimModifiedSellOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(sell_orderbook)
 }
 
-pub async fn get_sim_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<SimModifiedSellOrder>, Error> {
+pub async fn get_sim_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<BigDecimal, Vec<SimModifiedSellOrder>>, Error> {
     println!("Getting modified sell orders");
     use crate::schema::sim_modified_sell_orders::dsl::*;
 
@@ -172,18 +185,30 @@ pub async fn get_sim_modified_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPg
     .map(jitter)
     .take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     sim_modified_sell_orders
     .filter(symbol.eq(sym))
-    .order(price_level.asc())
     .load::<SimModifiedSellOrder>(&mut connection)
         .await
         .map_err(|e| {
             eprintln!("Error loading modified sell orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut sell_orderbook = BTreeMap::new();
+    for order in orders {
+        sell_orderbook.entry(order.price_level.clone())
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in sell_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &SimModifiedSellOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(sell_orderbook)
 }

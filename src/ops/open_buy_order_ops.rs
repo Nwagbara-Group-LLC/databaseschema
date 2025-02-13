@@ -1,10 +1,11 @@
 use crate::{get_timescale_connection, models::open_buy_order::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
+use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
-use std::sync::Arc;
+use std::{cmp::Reverse, collections::BTreeMap, sync::Arc};
 
 pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenBuyOrder) -> Result<OpenBuyOrder, Error> {
     println!("Creating open buy order: {:?}", order);
@@ -123,13 +124,13 @@ pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
     }).await
 }
 
-pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<OpenBuyOrder>, Error> {
+pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<OpenBuyOrder>>, Error> {
     println!("Getting open buy orders");
     use crate::schema::open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
@@ -141,16 +142,29 @@ pub async fn get_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &OpenBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }
 
-pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<OpenBuyOrder>, Error> {
+pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<OpenBuyOrder>>, Error> {
     println!("Getting open buy orders");
     use crate::schema::open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
@@ -163,5 +177,18 @@ pub async fn get_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectio
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &OpenBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }

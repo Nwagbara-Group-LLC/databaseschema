@@ -1,10 +1,11 @@
 use crate::{get_timescale_connection, models::modified_buy_order::{ModifiedBuyOrder, NewModifiedBuyOrder}, CustomAsyncPgConnectionManager};
+use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
-use std::sync::Arc;
+use std::{cmp::Reverse, collections::BTreeMap, sync::Arc};
 
 pub async fn create_modified_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewModifiedBuyOrder) -> Result<ModifiedBuyOrder, Error> {
     println!("Creating modified buy order: {:?}", order);
@@ -129,7 +130,7 @@ pub async fn delete_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
     }).await
 }
 
-pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<ModifiedBuyOrder>, Error> {
+pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<ModifiedBuyOrder>>, Error> {
     println!("Getting modified buy orders");
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -137,7 +138,7 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     .map(jitter)
     .take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
@@ -149,10 +150,23 @@ pub async fn get_modified_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
             eprintln!("Error loading modified buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &ModifiedBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }
 
-pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<ModifiedBuyOrder>, Error> {
+pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<ModifiedBuyOrder>>, Error> {
     println!("Getting modified buy orders");
     use crate::schema::modified_buy_orders::dsl::*;
 
@@ -160,7 +174,7 @@ pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConne
     .map(jitter)
     .take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
@@ -173,5 +187,18 @@ pub async fn get_modified_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConne
             eprintln!("Error loading modified buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &ModifiedBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }

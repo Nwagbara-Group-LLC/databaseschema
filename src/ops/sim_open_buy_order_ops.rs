@@ -1,10 +1,11 @@
 use crate::{get_timescale_connection, models::sim_open_buy_order::{NewSimOpenBuyOrder, SimOpenBuyOrder}, CustomAsyncPgConnectionManager};
+use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
-use std::sync::Arc;
+use std::{cmp::Reverse, collections::BTreeMap, sync::Arc};
 
 pub async fn create_sim_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewSimOpenBuyOrder) -> Result<SimOpenBuyOrder, Error> {
     println!("Creating open buy order: {:?}", order);
@@ -123,45 +124,69 @@ pub async fn delete_sim_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionMa
     }).await
 }
 
-pub async fn get_sim_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<SimOpenBuyOrder>, Error> {
+pub async fn get_sim_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<SimOpenBuyOrder>>, Error> {
     println!("Getting open buy orders");
     use crate::schema::sim_open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     sim_open_buy_orders
-        .order(price_level.desc())
         .load::<SimOpenBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &SimOpenBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }
 
-pub async fn get_sim_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<SimOpenBuyOrder>, Error> {
+pub async fn get_sim_open_buy_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<Reverse<BigDecimal>, Vec<SimOpenBuyOrder>>, Error> {
     println!("Getting open buy orders");
     use crate::schema::sim_open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let orders = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
     sim_open_buy_orders
     .filter(symbol.eq(sym))
-    .order(price_level.desc())
     .load::<SimOpenBuyOrder>(&mut connection)
         .await
         .map_err(|e| {
             eprintln!("Error loading open buy orders: {}", e);
             e
         })
-    }).await
+    }).await?;
+
+    let mut buy_orderbook = BTreeMap::new();
+    for order in orders {
+        buy_orderbook.entry(Reverse(order.price_level.clone()))
+            .or_insert_with(Vec::new)
+            .push(order);
+    }
+
+    for orders_at_price in buy_orderbook.values_mut() {
+        orders_at_price.sort_by(|a: &SimOpenBuyOrder, b| a.created_at.cmp(&b.created_at));
+    }
+
+    Ok(buy_orderbook)
 }
