@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::{get_timescale_connection, models::orderbook::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::order_book::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error};
