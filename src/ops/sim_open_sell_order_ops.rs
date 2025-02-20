@@ -1,14 +1,14 @@
 use crate::{get_timescale_connection, models::sim_open_sell_order::{NewSimOpenSellOrder, SimOpenSellOrder}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
-use diesel::{prelude::*, result::Error, upsert::excluded};
+use diesel::{prelude::*, result::Error, sql_query, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::{collections::BTreeMap, sync::Arc};
 
 pub async fn create_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewSimOpenSellOrder) -> Result<SimOpenSellOrder, Error> {
-    println!("Creating open sell order: {:?}", order);
+    println!("Creating sim open sell order: {:?}", order);
     use crate::schema::sim_open_sell_orders::dsl::*;
     
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -29,7 +29,7 @@ pub async fn create_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
         match result {
             Ok(_) => {},
             Err(e) => {
-                eprintln!("Error saving new open sell order: {}", e);
+                eprintln!("Error saving new sim open sell order: {}", e);
             }
         }
 
@@ -38,14 +38,14 @@ pub async fn create_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
             .first(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error fetching new open sell order: {}", e);
+                eprintln!("Error fetching new sim open sell order: {}", e);
                 e
             })
     }).await
 }
 
 pub async fn create_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewSimOpenSellOrder>) -> Result<Vec<SimOpenSellOrder>, Error> {
-    println!("Creating open sell order: {:?}", orders);
+    println!("Creating sim open sell order: {:?}", orders);
     use crate::schema::sim_open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -71,7 +71,7 @@ pub async fn create_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
         match result {
             Ok(_) => {},
             Err(e) => {
-                eprintln!("Error saving new open sell orders: {}", e);
+                eprintln!("Error saving new sim open sell orders: {}", e);
             }
         }
 
@@ -80,14 +80,62 @@ pub async fn create_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
         .load::<SimOpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error fetching new open sell orders: {}", e);
+            eprintln!("Error fetching new sim open sell orders: {}", e);
             e
         })
     }).await
 }
 
+pub async fn modify_sim_open_sell_orders(
+    pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
+    updates: Vec<(String, BigDecimal, BigDecimal)>,
+) -> Result<Vec<SimOpenSellOrder>, Error> {
+    println!("Modifying sim open sell orders: {:?}", updates);
+    if updates.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
+
+    Retry::spawn(retry_strategy, || async {
+        let mut connection = get_timescale_connection(pool.clone())
+            .await
+            .expect("Error connecting to database");
+
+        let mut unique_ids = Vec::with_capacity(updates.len());
+        let mut price_level_cases = String::new();
+        let mut sell_quantity_cases = String::new();
+
+        for (id, new_price, new_quantity) in &updates {
+            unique_ids.push(format!("'{}'", id));
+            price_level_cases.push_str(&format!("WHEN unique_id = '{}' THEN '{}' ", id, new_price));
+            sell_quantity_cases.push_str(&format!("WHEN unique_id = '{}' THEN '{}' ", id, new_quantity));
+        }
+
+        let unique_ids_sql = unique_ids.join(", ");
+
+        let update_query = format!(
+            "UPDATE sim_open_sell_orders SET 
+                price_level = CASE {} ELSE price_level END, 
+                sell_quantity = CASE {} ELSE sell_quantity END 
+            WHERE unique_id IN ({}) 
+            RETURNING *;",
+            price_level_cases, sell_quantity_cases, unique_ids_sql
+        );
+
+        sql_query(update_query)
+            .load::<SimOpenSellOrder>(&mut connection)
+            .await
+            .map_err(|e| {
+                eprintln!("Error modifying sim open sell orders: {}", e);
+                e
+            })
+    })
+    .await
+}
+
 pub async fn delete_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
-    println!("Deleting open sell order");
+    println!("Deleting sim open sell order");
     use crate::schema::sim_open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -100,7 +148,7 @@ pub async fn delete_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
         .execute(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error deleting open sell order: {}", e);
+            eprintln!("Error deleting sim open sell order: {}", e);
             e
         })
     })
@@ -108,7 +156,7 @@ pub async fn delete_sim_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionMa
 }
 
 pub async fn delete_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
-    println!("Deleting open sell orders: {:?}", ids);
+    println!("Deleting sim open sell orders: {:?}", ids);
     use crate::schema::sim_open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -121,14 +169,14 @@ pub async fn delete_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionM
         .execute(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error deleting open sell orders: {}", e);
+            eprintln!("Error deleting sim open sell orders: {}", e);
             e
         })
     }).await
 }
 
 pub async fn get_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<BigDecimal, Vec<SimOpenSellOrder>>, Error> {
-    println!("Getting open sell orders");
+    println!("Getting sim open sell orders");
     use crate::schema::sim_open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -141,7 +189,7 @@ pub async fn get_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
         .load::<SimOpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading open sell orders: {}", e);
+            eprintln!("Error loading sim open sell orders: {}", e);
             e
         })
     }).await?;
@@ -161,7 +209,7 @@ pub async fn get_sim_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
 }
 
 pub async fn get_sim_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<BigDecimal, Vec<SimOpenSellOrder>>, Error> {
-    println!("Getting open sell orders");
+    println!("Getting sim open sell orders");
     use crate::schema::sim_open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -175,7 +223,7 @@ pub async fn get_sim_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConn
     .load::<SimOpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading open sell orders: {}", e);
+            eprintln!("Error loading sim open sell orders: {}", e);
             e
         })
     }).await?;
