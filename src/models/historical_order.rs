@@ -16,8 +16,8 @@ pub struct NewHistoricalOrder {
     side: String,
     price_level: BigDecimal,
     quantity: BigDecimal,
-    prev_price: BigDecimal,
-    prev_quantity: BigDecimal,
+    prev_price: Option<BigDecimal>,
+    prev_quantity: Option<BigDecimal>,
     status: String,
     exchange: String,
     symbol: String
@@ -30,8 +30,8 @@ impl NewHistoricalOrder {
         side: &str,
         price_level: &BigDecimal,
         quantity: &BigDecimal,
-        prev_price: &BigDecimal,
-        prev_quantity: &BigDecimal,
+        prev_price: Option<&BigDecimal>,
+        prev_quantity: Option<&BigDecimal>,
         status: &str,
         exchange: &str,
         symbol: &str
@@ -42,8 +42,8 @@ impl NewHistoricalOrder {
             side: side.to_string(),
             price_level: price_level.clone(),
             quantity: quantity.clone(),
-            prev_price: prev_price.clone(),
-            prev_quantity: prev_quantity.clone(),
+            prev_price: prev_price.cloned(),
+            prev_quantity: prev_quantity.cloned(),
             status: status.to_string(),
             exchange: exchange.to_string(),
             symbol: symbol.to_string()

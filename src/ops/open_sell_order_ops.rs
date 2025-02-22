@@ -109,7 +109,7 @@ pub async fn modify_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
 
 pub async fn modify_open_sell_orders(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
-    updates: Vec<(String, BigDecimal, BigDecimal)>,
+    updates: Vec<(&String, &BigDecimal, &BigDecimal)>,
 ) -> Result<Vec<OpenSellOrder>, Error> {
     println!("Modifying open sell orders: {:?}", updates);
     if updates.is_empty() {

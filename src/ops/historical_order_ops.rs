@@ -76,7 +76,7 @@ pub async fn create_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
     }).await
 }
 
-pub async fn get_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<HistoricalOrder>, Error> {
+pub async fn get_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<HistoricalOrder>, Error> {
     use crate::schema::historical_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -86,6 +86,7 @@ pub async fn get_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager
             .await
             .expect("Error connecting to database");
         historical_orders
+            .filter(symbol.eq(sym))
             .order(timestamp.asc())
             .load(&mut connection)
             .await
