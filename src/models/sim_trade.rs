@@ -70,3 +70,21 @@ pub struct SimTrade {
     #[diesel(sql_type = Numeric)]
     pub quantity: BigDecimal,
 }
+
+impl SimTrade {
+    pub fn get_price(&self) -> &BigDecimal {
+        &self.price
+    }
+
+    pub fn get_quantity(&self) -> &BigDecimal {
+        &self.quantity
+    }
+
+    pub fn get_side(&self) -> &str {
+        &self.side
+    }
+
+    pub fn get_symbol(&self) -> String {
+        self.symbol.clone()
+    }
+}

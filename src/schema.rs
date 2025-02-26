@@ -23,6 +23,25 @@ diesel::table! {
         status -> Text,
         exchange -> Text,
         symbol -> Text,
+        exchange_id -> Uuid,
+        security_id -> Uuid,
+    }
+}
+
+diesel::table! {
+    historical_snapshot (event_id) {
+        event_id -> Uuid,
+        timestamp -> Timestamptz,
+        order_id -> Text,
+        event_type -> Text,
+        side -> Text,
+        price_level -> Numeric,
+        quantity -> Numeric,
+        status -> Text,
+        exchange -> Text,
+        symbol -> Text,
+        exchange_id -> Uuid,
+        security_id -> Uuid,
     }
 }
 
@@ -157,9 +176,15 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(historical_orders -> exchanges (exchange_id));
+diesel::joinable!(historical_orders -> securities (security_id));
+diesel::joinable!(historical_snapshot -> exchanges (exchange_id));
+diesel::joinable!(historical_snapshot -> securities (security_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     exchanges,
     historical_orders,
+    historical_snapshot,
     open_buy_orders,
     open_sell_orders,
     order_books,

@@ -73,3 +73,39 @@ pub struct SimOpenBuyOrder {
     #[diesel(sql_type = Numeric)]
     pub buy_quantity: BigDecimal,
 }
+
+impl SimOpenBuyOrder {
+    pub fn new(
+        backtest_id: Uuid,
+        created_at: DateTime<Utc>,
+        symbol: &str,
+        exchange: &str,
+        security_id: Uuid,
+        exchange_id: Uuid,
+        buy_order_book_id: Uuid,
+        unique_id: &str,
+        price_level: &BigDecimal,
+        buy_quantity: &BigDecimal,
+    ) -> SimOpenBuyOrder {
+        SimOpenBuyOrder {
+            backtest_id,
+            created_at,
+            symbol: symbol.to_string(),
+            exchange: exchange.to_string(),
+            security_id,
+            exchange_id,
+            buy_order_book_id,
+            unique_id: unique_id.to_string(),
+            price_level: price_level.clone(),
+            buy_quantity: buy_quantity.clone(),
+        }
+    }
+
+    pub fn get_quantity(&self) -> BigDecimal {
+        self.buy_quantity.clone()
+    }
+    
+    pub fn set_quantity(&mut self, buy_quantity: &BigDecimal) {
+        self.buy_quantity = buy_quantity.clone();
+    }
+}

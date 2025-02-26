@@ -39,7 +39,7 @@ pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orde
     }).await
 }
 
-pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<Vec<Trade>, Error> {
+pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str, xchange: &str) -> Result<Vec<Trade>, Error> {
     println!("Getting trades by symbol");
     use crate::schema::trades::dsl::*;
 
@@ -50,7 +50,7 @@ pub async fn get_trades_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>
             .await
             .expect("Error connecting to database");
         trades
-            .filter(symbol.eq(sym))
+            .filter(symbol.eq(sym).and(exchange.eq(xchange)))
             .order(created_at.asc())
             .select(Trade::as_select()) // Ensure the fields match
             .load::<Trade>(&mut connection)

@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE IF NOT EXISTS open_buy_orders (
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL,
     symbol VARCHAR(7) NOT NULL REFERENCES securities (symbol),
     exchange VARCHAR(8) NOT NULL REFERENCES exchanges (exchange),
     security_id UUID NOT NULL REFERENCES securities (security_id),

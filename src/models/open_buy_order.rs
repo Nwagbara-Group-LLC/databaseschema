@@ -11,6 +11,7 @@ use crate::schema::open_buy_orders;
 #[derive(Debug, Insertable, AsChangeset)]
 #[diesel(table_name = open_buy_orders)]
 pub struct NewOpenBuyOrder {
+    pub created_at: DateTime<Utc>,
     pub symbol: String,
     pub exchange: String,
     pub security_id: Uuid,
@@ -23,6 +24,7 @@ pub struct NewOpenBuyOrder {
 
 impl NewOpenBuyOrder {
     pub fn new(
+        created_at: DateTime<Utc>,
         symbol: &str,
         exchange: &str,
         security_id: Uuid,
@@ -33,6 +35,7 @@ impl NewOpenBuyOrder {
         buy_quantity: &BigDecimal,
     ) -> NewOpenBuyOrder {
         NewOpenBuyOrder {
+            created_at,
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
             security_id,
