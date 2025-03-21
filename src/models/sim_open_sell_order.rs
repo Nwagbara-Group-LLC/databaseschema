@@ -8,70 +8,26 @@ use uuid::Uuid;
 
 use crate::schema::sim_open_sell_orders;
 
-#[derive(Debug, Insertable, AsChangeset)]
-#[diesel(table_name = sim_open_sell_orders)]
-pub struct NewSimOpenSellOrder {
-    pub backtest_id: Uuid,
-    pub symbol: String,
-    pub exchange: String,
-    pub security_id: Uuid,
-    pub exchange_id: Uuid,
-    pub sell_order_book_id: Uuid,
-    pub unique_id: String,
-    pub price_level: BigDecimal,
-    pub sell_quantity: BigDecimal,
-}
-
-impl NewSimOpenSellOrder {
-    pub fn new(
-        backtest_id: Uuid,
-        symbol: &str,
-        exchange: &str,
-        security_id: Uuid,
-        exchange_id: Uuid,
-        sell_order_book_id: Uuid,
-        unique_id: &str,
-        price_level: &BigDecimal,
-        sell_quantity: &BigDecimal,
-    ) -> NewSimOpenSellOrder {
-        NewSimOpenSellOrder {
-            backtest_id,
-            symbol: symbol.to_string(),
-            exchange: exchange.to_string(),
-            security_id,
-            exchange_id,
-            sell_order_book_id,
-            unique_id: unique_id.to_string(),
-            price_level: price_level.clone(),
-            sell_quantity: sell_quantity.clone(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_open_sell_orders)]
 #[diesel(check_for_backend(Pg))]
 pub struct SimOpenSellOrder {
     #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub backtest_id: Uuid,
+    backtest_id: Uuid,
     #[diesel(sql_type = Timestamptz)]
-    pub created_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
     #[diesel(sql_type = VarChar)]
-    pub symbol: String,
+    symbol: String,
     #[diesel(sql_type = VarChar)]
-    pub exchange: String,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub security_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub sell_order_book_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub exchange_id: Uuid,
+    exchange: String,
     #[diesel(sql_type = VarChar)]
-    pub unique_id: String,
+    unique_id: String,
     #[diesel(sql_type = Numeric)]
-    pub price_level: BigDecimal,
+    price_level: BigDecimal,
     #[diesel(sql_type = Numeric)]
-    pub sell_quantity: BigDecimal,
+    sell_quantity: BigDecimal,
+    #[diesel(sql_type = diesel::sql_types::Uuid)]
+    created_id: Uuid,
 }
 
 impl SimOpenSellOrder {
@@ -80,30 +36,55 @@ impl SimOpenSellOrder {
         created_at: DateTime<Utc>,
         symbol: &str,
         exchange: &str,
-        security_id: Uuid,
-        exchange_id: Uuid,
-        sell_order_book_id: Uuid,
         unique_id: &str,
         price_level: &BigDecimal,
         sell_quantity: &BigDecimal,
+        created_id: Option<Uuid>,
     ) -> SimOpenSellOrder {
         SimOpenSellOrder {
             backtest_id,
             created_at,
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
-            security_id,
-            exchange_id,
-            sell_order_book_id,
             unique_id: unique_id.to_string(),
             price_level: price_level.clone(),
             sell_quantity: sell_quantity.clone(),
+            created_id: created_id.unwrap_or(Uuid::nil()),
         }
+    }
+
+    pub fn get_timestamp(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    pub fn get_unique_id(&self) -> String {
+        self.unique_id.clone()
+    }
+
+    pub fn get_created_id(&self) -> Option<Uuid> {
+        Some(self.created_id)
+    }
+
+    pub fn get_exchange(&self) -> String {
+        self.exchange.clone()
+    }
+
+    pub fn add_fee(&mut self, fee: &BigDecimal) {
+        self.price_level -= &self.price_level * fee;
+    }
+
+    pub fn get_price_level(&self) -> BigDecimal {
+        self.price_level.clone()
+    }
+
+    pub fn get_symbol(&self) -> String {
+        self.symbol.clone()
     }
 
     pub fn get_quantity(&self) -> BigDecimal {
         self.sell_quantity.clone()
     }
+
     pub fn set_quantity(&mut self, sell_quantity: &BigDecimal) {
         self.sell_quantity = sell_quantity.clone();
     }

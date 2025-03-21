@@ -8,70 +8,26 @@ use uuid::Uuid;
 
 use crate::schema::sim_open_buy_orders;
 
-#[derive(Debug, Insertable, AsChangeset)]
-#[diesel(table_name = sim_open_buy_orders)]
-pub struct NewSimOpenBuyOrder {
-    pub backtest_id: Uuid,
-    pub symbol: String,
-    pub exchange: String,
-    pub security_id: Uuid,
-    pub exchange_id: Uuid,
-    pub buy_order_book_id: Uuid,
-    pub unique_id: String,
-    pub price_level: BigDecimal,
-    pub buy_quantity: BigDecimal,
-}
-
-impl NewSimOpenBuyOrder {
-    pub fn new(
-        backtest_id: Uuid,
-        symbol: &str,
-        exchange: &str,
-        security_id: Uuid,
-        exchange_id: Uuid,
-        buy_order_book_id: Uuid,
-        unique_id: &str,
-        price_level: &BigDecimal,
-        buy_quantity: &BigDecimal,
-    ) -> NewSimOpenBuyOrder {
-        NewSimOpenBuyOrder {
-            backtest_id,
-            symbol: symbol.to_string(),
-            exchange: exchange.to_string(),
-            security_id,
-            exchange_id,
-            buy_order_book_id,
-            unique_id: unique_id.to_string(),
-            price_level: price_level.clone(),
-            buy_quantity: buy_quantity.clone(),
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_open_buy_orders)]
 #[diesel(check_for_backend(Pg))]
 pub struct SimOpenBuyOrder {
     #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub backtest_id: Uuid,
+    backtest_id: Uuid,
     #[diesel(sql_type = Timestamptz)]
-    pub created_at: DateTime<Utc>,
+    created_at: DateTime<Utc>,
     #[diesel(sql_type = VarChar)]
-    pub symbol: String,
+    symbol: String,
     #[diesel(sql_type = VarChar)]
-    pub exchange: String,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub security_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub exchange_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub buy_order_book_id: Uuid,
+    exchange: String,
     #[diesel(sql_type = VarChar)]
-    pub unique_id: String,
+    unique_id: String,
     #[diesel(sql_type = Numeric)]
-    pub price_level: BigDecimal,
+    price_level: BigDecimal,
     #[diesel(sql_type = Numeric)]
-    pub buy_quantity: BigDecimal,
+    buy_quantity: BigDecimal,
+    #[diesel(sql_type = diesel::sql_types::Uuid)]
+    created_id: Uuid,
 }
 
 impl SimOpenBuyOrder {
@@ -80,25 +36,49 @@ impl SimOpenBuyOrder {
         created_at: DateTime<Utc>,
         symbol: &str,
         exchange: &str,
-        security_id: Uuid,
-        exchange_id: Uuid,
-        buy_order_book_id: Uuid,
         unique_id: &str,
         price_level: &BigDecimal,
         buy_quantity: &BigDecimal,
+        created_id: Option<Uuid>,
     ) -> SimOpenBuyOrder {
         SimOpenBuyOrder {
             backtest_id,
             created_at,
             symbol: symbol.to_string(),
             exchange: exchange.to_string(),
-            security_id,
-            exchange_id,
-            buy_order_book_id,
             unique_id: unique_id.to_string(),
             price_level: price_level.clone(),
             buy_quantity: buy_quantity.clone(),
+            created_id: created_id.unwrap_or(Uuid::nil()),
         }
+    }
+
+    pub fn get_timestamp(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    pub fn get_unique_id(&self) -> String {
+        self.unique_id.clone()
+    }
+
+    pub fn get_created_id(&self) -> Option<Uuid> {
+        Some(self.created_id)
+    }
+
+    pub fn get_exchange(&self) -> String {
+        self.exchange.clone()
+    }
+
+    pub fn add_fee(&mut self, fee: &BigDecimal) {
+        self.price_level += &self.price_level * fee;
+    }
+
+    pub fn get_price_level(&self) -> BigDecimal {
+        self.price_level.clone()
+    }
+
+    pub fn get_symbol(&self) -> String {
+        self.symbol.clone()
     }
 
     pub fn get_quantity(&self) -> BigDecimal {

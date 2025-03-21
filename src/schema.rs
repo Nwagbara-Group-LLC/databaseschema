@@ -113,13 +113,11 @@ diesel::table! {
         symbol -> Varchar,
         #[max_length = 8]
         exchange -> Varchar,
-        security_id -> Uuid,
-        exchange_id -> Uuid,
-        buy_order_book_id -> Uuid,
         #[max_length = 255]
         unique_id -> Varchar,
         price_level -> Numeric,
         buy_quantity -> Numeric,
+        created_id -> Uuid,
     }
 }
 
@@ -131,13 +129,11 @@ diesel::table! {
         symbol -> Varchar,
         #[max_length = 8]
         exchange -> Varchar,
-        security_id -> Uuid,
-        exchange_id -> Uuid,
-        sell_order_book_id -> Uuid,
         #[max_length = 255]
         unique_id -> Varchar,
         price_level -> Numeric,
         sell_quantity -> Numeric,
+        created_id -> Uuid,
     }
 }
 
@@ -149,13 +145,12 @@ diesel::table! {
         symbol -> Varchar,
         #[max_length = 8]
         exchange -> Varchar,
-        trade_id -> Uuid,
-        security_id -> Uuid,
-        exchange_id -> Uuid,
+        trade_id -> Text,
         #[max_length = 4]
         side -> Varchar,
         price -> Numeric,
         quantity -> Numeric,
+        matched_user -> Bool,
     }
 }
 
@@ -166,7 +161,7 @@ diesel::table! {
         symbol -> Varchar,
         #[max_length = 8]
         exchange -> Varchar,
-        trade_id -> Uuid,
+        trade_id -> Varchar,
         security_id -> Uuid,
         exchange_id -> Uuid,
         #[max_length = 4]

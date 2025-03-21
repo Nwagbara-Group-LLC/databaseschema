@@ -24,7 +24,7 @@ pub async fn create_historical_order(pool: Arc<Pool<CustomAsyncPgConnectionManag
             .await?;
 
         historical_orders
-            .filter(order_id.eq(&historical_order.order_id))
+            .filter(order_id.eq(&historical_order.get_order_id()))
             .first(&mut connection)
             .await
             .map_err(|e| {
@@ -66,7 +66,7 @@ pub async fn create_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionMana
             .await?;
 
         historical_orders
-            .filter(order_id.eq_any(orders.iter().map(|order| order.order_id.clone())))
+            .filter(order_id.eq_any(orders.iter().map(|order| order.get_order_id())))
             .load(&mut connection)
             .await
             .map_err(|e| {

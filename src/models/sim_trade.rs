@@ -8,72 +8,65 @@ use uuid::Uuid;
 
 use crate::schema::sim_trades;
 
-#[derive(Serialize, Deserialize, Debug, Insertable, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
-#[diesel(table_name = sim_trades)]
-pub struct NewSimTrade {
-    pub backtest_id: Uuid,
-    pub symbol: String,
-    pub exchange: String,
-    pub security_id: Uuid,
-    pub exchange_id: Uuid,
-    pub side: String,
-    pub price: BigDecimal,
-    pub quantity: BigDecimal,
-}
-
-impl NewSimTrade {
-    pub fn new(
-        backtest_id: Uuid,
-        symbol: &str,
-        exchange: &str,
-        security_id: Uuid,
-        exchange_id: Uuid,
-        side: &str,
-        price: &BigDecimal,
-        quantity: &BigDecimal,
-    ) -> NewSimTrade {
-        NewSimTrade {
-            backtest_id,
-            symbol: symbol.to_string(),
-            exchange: exchange.to_string(),
-            security_id,
-            exchange_id,
-            side: side.to_string(),
-            price: price.clone(),
-            quantity: quantity.clone(),
-        }
-    }
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = sim_trades)]
 #[diesel(check_for_backend(Pg))]
 pub struct SimTrade {
     #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub backtest_id: Uuid,
+    backtest_id: Uuid,
     #[diesel(sql_type = Timestamptz)]
-    pub created_at: DateTime<Utc>,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub trade_id: Uuid,
+    created_at: DateTime<Utc>,
     #[diesel(sql_type = VarChar)]
-    pub symbol: String,
+    trade_id: String,
     #[diesel(sql_type = VarChar)]
-    pub exchange: String,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub security_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    pub exchange_id: Uuid,
+    symbol: String,
     #[diesel(sql_type = VarChar)]
-    pub side: String,
+    exchange: String,
+    #[diesel(sql_type = VarChar)]
+    side: String,
     #[diesel(sql_type = Numeric)]
-    pub price: BigDecimal,
+    price: BigDecimal,
     #[diesel(sql_type = Numeric)]
-    pub quantity: BigDecimal,
+    quantity: BigDecimal,
+    #[diesel(sql_type = diesel::sql_types::Bool)]
+    matched_user: bool,
 }
 
 impl SimTrade {
-    pub fn get_price(&self) -> &BigDecimal {
-        &self.price
+    pub fn new(
+        created_at: DateTime<Utc>,
+        backtest_id: Uuid,
+        trade_id: &str,
+        symbol: &str,
+        exchange: &str,
+        side: &str,
+        price: &BigDecimal,
+        quantity: &BigDecimal,
+        matched_user: bool,
+    ) -> SimTrade {
+        SimTrade {
+            created_at,
+            backtest_id,
+            trade_id: trade_id.to_string(),
+            symbol: symbol.to_string(),
+            exchange: exchange.to_string(),
+            side: side.to_string(),
+            price: price.clone(),
+            quantity: quantity.clone(),
+            matched_user,
+        }
+    }
+
+    pub fn get_timestamp(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    pub fn get_trade_id(&self) -> String {
+        self.trade_id.clone()
+    }
+
+    pub fn get_price_level(&self) -> BigDecimal {
+        self.price.clone()
     }
 
     pub fn get_quantity(&self) -> &BigDecimal {
@@ -86,5 +79,9 @@ impl SimTrade {
 
     pub fn get_symbol(&self) -> String {
         self.symbol.clone()
+    }
+
+    pub fn get_matched_user(&self) -> bool {
+        self.matched_user
     }
 }

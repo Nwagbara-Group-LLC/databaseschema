@@ -4,12 +4,11 @@ CREATE TABLE IF NOT EXISTS sim_trades (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     symbol VARCHAR(7) NOT NULL REFERENCES securities (symbol),
     exchange VARCHAR(8) NOT NULL REFERENCES exchanges (exchange),
-    trade_id UUID DEFAULT gen_random_uuid(),
-    security_id UUID NOT NULL REFERENCES securities (security_id),
-    exchange_id UUID NOT NULL REFERENCES exchanges (exchange_id),
+    trade_id TEXT DEFAULT NOT NULL,
     side VARCHAR(4) NOT NULL,
     price NUMERIC NOT NULL,
     quantity NUMERIC NOT NULL,
+    matched_trader BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (created_at, backtest_id, trade_id)
 );
 
@@ -32,12 +31,6 @@ CREATE INDEX idx_sim_trades_symbol ON sim_trades (symbol);
 
 -- Index on exchange for faster lookups by exchange
 CREATE INDEX idx_sim_trades_exchange ON sim_trades (exchange);
-
--- Index on security_id for faster lookups by security_id
-CREATE INDEX idx_sim_trades_security_id ON sim_trades (security_id);
-
--- Index on exchange_id for faster lookups by exchange_id
-CREATE INDEX idx_sim_trades_exchange_id ON sim_trades (exchange_id);
 
 -- Index on side for faster lookups by side
 CREATE INDEX idx_sim_trades_side ON sim_trades (side);

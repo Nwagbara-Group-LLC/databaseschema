@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS trades (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     symbol VARCHAR(7) NOT NULL REFERENCES securities (symbol),
     exchange VARCHAR(8) NOT NULL REFERENCES exchanges (exchange),
-    trade_id UUID DEFAULT gen_random_uuid(),
+    trade_id VARCHAR(255) NOT NULL,
     security_id UUID NOT NULL REFERENCES securities (security_id),
     exchange_id UUID NOT NULL REFERENCES exchanges (exchange_id),
     side VARCHAR(4) NOT NULL,

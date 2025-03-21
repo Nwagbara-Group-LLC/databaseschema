@@ -12,7 +12,7 @@ use crate::schema::historical_orders;
 #[diesel(table_name = historical_orders)]
 pub struct NewHistoricalOrder {
     timestamp: DateTime<Utc>,
-    pub order_id: String,
+    order_id: String,
     event_type: String,
     side: String,
     price_level: BigDecimal,
@@ -52,9 +52,13 @@ impl NewHistoricalOrder {
             symbol: symbol.to_string()
         }
     }
+
+    pub fn get_order_id(&self) -> String {
+        self.order_id.clone()
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
+#[derive(Clone, Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = historical_orders)]
 #[diesel(check_for_backend(Pg))]
 pub struct HistoricalOrder {
@@ -101,8 +105,8 @@ impl HistoricalOrder {
         self.event_type.clone()
     }
 
-    pub fn get_side(&self) -> String {
-        self.side.clone()
+    pub fn get_side(&self) -> &str {
+        &self.side
     }
 
     pub fn get_symbol(&self) -> String {
@@ -121,11 +125,11 @@ impl HistoricalOrder {
         self.exchange_id
     }
 
-    pub fn get_price_level(&self) -> BigDecimal {
-        self.price_level.clone()
+    pub fn get_price_level(&self) -> &BigDecimal {
+        &self.price_level
     }
 
-    pub fn get_quantity(&self) -> BigDecimal {
-        self.quantity.clone()
+    pub fn get_quantity(&self) -> &BigDecimal {
+        &self.quantity
     }
 }
