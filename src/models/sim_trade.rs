@@ -57,16 +57,16 @@ impl SimTrade {
         }
     }
 
-    pub fn get_timestamp(&self) -> DateTime<Utc> {
-        self.created_at
+    pub fn get_timestamp(&self) -> &DateTime<Utc> {
+        &self.created_at
     }
 
-    pub fn get_trade_id(&self) -> String {
-        self.trade_id.clone()
+    pub fn get_trade_id(&self) -> &str {
+        &self.trade_id
     }
 
-    pub fn get_price_level(&self) -> BigDecimal {
-        self.price.clone()
+    pub fn get_price_level(&self) -> &BigDecimal {
+        &self.price
     }
 
     pub fn get_quantity(&self) -> &BigDecimal {
@@ -77,8 +77,8 @@ impl SimTrade {
         &self.side
     }
 
-    pub fn get_symbol(&self) -> String {
-        self.symbol.clone()
+    pub fn get_symbol(&self) -> &str {
+        &self.symbol
     }
 
     pub fn get_matched_user(&self) -> bool {

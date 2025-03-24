@@ -83,24 +83,24 @@ impl HistoricalSnapshot {
         self.timestamp
     }
 
-    pub fn get_order_id(&self) -> String {
-        self.order_id.clone()
+    pub fn get_order_id(&self) -> &str {
+        &self.order_id
     }
 
-    pub fn get_event_type(&self) -> String {
-        self.event_type.clone()
+    pub fn get_event_type(&self) -> &str {
+        &self.event_type
     }
 
-    pub fn get_side(&self) -> String {
-        self.side.clone()
+    pub fn get_side(&self) -> &str {
+        &self.side
     }
 
-    pub fn get_symbol(&self) -> String {
-        self.symbol.clone()
+    pub fn get_symbol(&self) -> &str {
+        &self.symbol
     }
 
-    pub fn get_exchange(&self) -> String {
-        self.exchange.clone()
+    pub fn get_exchange(&self) -> &str {
+        &self.exchange
     }
 
     pub fn get_security_id(&self) -> Uuid {
@@ -111,11 +111,11 @@ impl HistoricalSnapshot {
         self.exchange_id
     }
 
-    pub fn get_price_level(&self) -> BigDecimal {
-        self.price_level.clone()
+    pub fn get_price_level(&self) -> &BigDecimal {
+        &self.price_level
     }
 
-    pub fn get_quantity(&self) -> BigDecimal {
-        self.quantity.clone()
+    pub fn get_quantity(&self) -> &BigDecimal {
+        &self.quantity
     }
 }
