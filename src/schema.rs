@@ -176,7 +176,283 @@ diesel::joinable!(historical_orders -> securities (security_id));
 diesel::joinable!(historical_snapshot -> exchanges (exchange_id));
 diesel::joinable!(historical_snapshot -> securities (security_id));
 
+diesel::table! {
+    backtest_results (id) {
+        id -> Uuid,
+        backtest_id -> Uuid,
+        #[max_length = 255]
+        strategy_name -> Varchar,
+        #[max_length = 50]
+        symbol -> Varchar,
+        start_date -> Timestamptz,
+        end_date -> Timestamptz,
+        initial_capital -> Numeric,
+        commission_rate -> Numeric,
+        #[max_length = 50]
+        slippage_model_type -> Varchar,
+        slippage_fixed_rate -> Nullable<Numeric>,
+        slippage_sqrt_rate -> Nullable<Numeric>,
+        slippage_linear_rate -> Nullable<Numeric>,
+        temporary_impact -> Numeric,
+        permanent_impact -> Numeric,
+        participation_rate_limit -> Numeric,
+        #[max_length = 50]
+        benchmark -> Nullable<Varchar>,
+        #[max_length = 50]
+        rebalancing_frequency -> Varchar,
+        point_in_time -> Bool,
+        warmup_period_days -> Int4,
+        total_return -> Numeric,
+        annualized_return -> Numeric,
+        volatility -> Numeric,
+        sharpe_ratio -> Nullable<Numeric>,
+        sortino_ratio -> Nullable<Numeric>,
+        max_drawdown -> Numeric,
+        calmar_ratio -> Nullable<Numeric>,
+        win_rate -> Numeric,
+        profit_factor -> Numeric,
+        avg_trade_return -> Numeric,
+        total_trades -> Int4,
+        best_trade -> Nullable<Numeric>,
+        worst_trade -> Nullable<Numeric>,
+        avg_time_in_trade -> Nullable<Numeric>,
+        value_at_risk_95 -> Nullable<Numeric>,
+        expected_shortfall_95 -> Nullable<Numeric>,
+        beta -> Nullable<Numeric>,
+        correlation_with_benchmark -> Nullable<Numeric>,
+        tracking_error -> Nullable<Numeric>,
+        information_ratio -> Nullable<Numeric>,
+        jensen_alpha -> Nullable<Numeric>,
+        max_drawdown_duration_days -> Nullable<Int4>,
+        current_drawdown -> Numeric,
+        avg_drawdown -> Nullable<Numeric>,
+        benchmark_return -> Nullable<Numeric>,
+        excess_return -> Nullable<Numeric>,
+        outperformance_periods -> Nullable<Int4>,
+        underperformance_periods -> Nullable<Int4>,
+        total_orders -> Int4,
+        filled_orders -> Int4,
+        cancelled_orders -> Int4,
+        avg_slippage -> Numeric,
+        total_commission_paid -> Numeric,
+        avg_fill_time_seconds -> Nullable<Numeric>,
+        strategy_metrics -> Nullable<Jsonb>,
+        strategy_instance_id -> Nullable<Uuid>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    backtest_trades (id) {
+        id -> Uuid,
+        backtest_result_id -> Uuid,
+        trade_id -> Uuid,
+        order_id -> Uuid,
+        #[max_length = 50]
+        symbol -> Varchar,
+        #[max_length = 10]
+        side -> Varchar,
+        quantity -> Numeric,
+        price -> Numeric,
+        commission -> Numeric,
+        timestamp -> Timestamptz,
+        metadata -> Nullable<Jsonb>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    backtest_equity_curve (id) {
+        id -> Uuid,
+        backtest_result_id -> Uuid,
+        timestamp -> Timestamptz,
+        portfolio_value -> Numeric,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    backtest_position_history (id) {
+        id -> Uuid,
+        backtest_result_id -> Uuid,
+        timestamp -> Timestamptz,
+        #[max_length = 50]
+        symbol -> Varchar,
+        quantity -> Numeric,
+        average_price -> Numeric,
+        current_price -> Numeric,
+        unrealized_pnl -> Numeric,
+        #[max_length = 10]
+        direction -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    backtest_drawdown_periods (id) {
+        id -> Uuid,
+        backtest_result_id -> Uuid,
+        start_date -> Timestamptz,
+        end_date -> Timestamptz,
+        duration_days -> Int4,
+        magnitude -> Numeric,
+        recovery_date -> Nullable<Timestamptz>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    strategies (id) {
+        id -> Uuid,
+        #[max_length = 255]
+        strategy_name -> Varchar,
+        #[max_length = 100]
+        strategy_type -> Varchar,
+        #[max_length = 50]
+        version -> Varchar,
+        description -> Nullable<Text>,
+        #[max_length = 255]
+        created_by -> Nullable<Varchar>,
+        is_active -> Bool,
+        base_configuration -> Nullable<Jsonb>,
+        metadata -> Nullable<Jsonb>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    strategy_parameters (id) {
+        id -> Uuid,
+        strategy_id -> Uuid,
+        #[max_length = 255]
+        parameter_name -> Varchar,
+        #[max_length = 50]
+        parameter_type -> Varchar,
+        is_required -> Bool,
+        default_value -> Nullable<Jsonb>,
+        min_value -> Nullable<Numeric>,
+        max_value -> Nullable<Numeric>,
+        allowed_values -> Nullable<Jsonb>,
+        #[max_length = 500]
+        validation_pattern -> Nullable<Varchar>,
+        #[max_length = 255]
+        display_name -> Nullable<Varchar>,
+        description -> Nullable<Text>,
+        #[max_length = 100]
+        parameter_group -> Nullable<Varchar>,
+        display_order -> Nullable<Int4>,
+        is_optimizable -> Bool,
+        optimization_min -> Nullable<Numeric>,
+        optimization_max -> Nullable<Numeric>,
+        optimization_step -> Nullable<Numeric>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    strategy_instances (id) {
+        id -> Uuid,
+        strategy_id -> Uuid,
+        #[max_length = 255]
+        instance_name -> Nullable<Varchar>,
+        description -> Nullable<Text>,
+        parameters -> Jsonb,
+        performance_summary -> Nullable<Jsonb>,
+        risk_metrics -> Nullable<Jsonb>,
+        is_template -> Bool,
+        tags -> Nullable<Array<Nullable<Text>>>,
+        #[max_length = 255]
+        created_by -> Nullable<Varchar>,
+        optimization_run_id -> Nullable<Uuid>,
+        optimization_score -> Nullable<Numeric>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    optimization_runs (id) {
+        id -> Uuid,
+        strategy_id -> Uuid,
+        #[max_length = 255]
+        run_name -> Varchar,
+        #[max_length = 100]
+        optimization_method -> Varchar,
+        #[max_length = 100]
+        objective_function -> Varchar,
+        optimization_config -> Nullable<Jsonb>,
+        parameter_ranges -> Jsonb,
+        constraints -> Nullable<Jsonb>,
+        #[max_length = 50]
+        status -> Varchar,
+        total_iterations -> Nullable<Int4>,
+        completed_iterations -> Nullable<Int4>,
+        best_score -> Nullable<Numeric>,
+        best_parameters -> Nullable<Jsonb>,
+        started_at -> Nullable<Timestamptz>,
+        completed_at -> Nullable<Timestamptz>,
+        error_message -> Nullable<Text>,
+        #[max_length = 255]
+        created_by -> Nullable<Varchar>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    optimization_iterations (id) {
+        id -> Uuid,
+        optimization_run_id -> Uuid,
+        iteration_number -> Int4,
+        parameters -> Jsonb,
+        objective_score -> Nullable<Numeric>,
+        additional_metrics -> Nullable<Jsonb>,
+        started_at -> Timestamptz,
+        completed_at -> Nullable<Timestamptz>,
+        execution_time_ms -> Nullable<Int4>,
+        #[max_length = 50]
+        status -> Varchar,
+        error_message -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    strategy_comparisons (id) {
+        id -> Uuid,
+        #[max_length = 255]
+        comparison_name -> Varchar,
+        description -> Nullable<Text>,
+        strategies -> Jsonb,
+        comparison_period -> Nullable<Jsonb>,
+        #[max_length = 20]
+        benchmark_symbol -> Nullable<Varchar>,
+        results -> Nullable<Jsonb>,
+        summary -> Nullable<Jsonb>,
+        #[max_length = 255]
+        created_by -> Nullable<Varchar>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::joinable!(backtest_trades -> backtest_results (backtest_result_id));
+diesel::joinable!(backtest_equity_curve -> backtest_results (backtest_result_id));
+diesel::joinable!(backtest_position_history -> backtest_results (backtest_result_id));
+diesel::joinable!(backtest_drawdown_periods -> backtest_results (backtest_result_id));
+diesel::joinable!(backtest_results -> strategy_instances (strategy_instance_id));
+diesel::joinable!(strategy_parameters -> strategies (strategy_id));
+diesel::joinable!(strategy_instances -> strategies (strategy_id));
+diesel::joinable!(strategy_instances -> optimization_runs (optimization_run_id));
+diesel::joinable!(optimization_runs -> strategies (strategy_id));
+diesel::joinable!(optimization_iterations -> optimization_runs (optimization_run_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
+    backtest_results,
+    backtest_trades,
+    backtest_equity_curve,
+    backtest_position_history,
+    backtest_drawdown_periods,
     exchanges,
     historical_orders,
     historical_snapshot,
@@ -188,4 +464,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     sim_open_sell_orders,
     sim_trades,
     trades,
+    strategies,
+    strategy_parameters,
+    strategy_instances,
+    optimization_runs,
+    optimization_iterations,
+    strategy_comparisons,
 );

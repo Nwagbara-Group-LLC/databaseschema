@@ -1,3 +1,4 @@
+pub mod backtest_result;
 pub mod exchange;
 pub mod historical_order;
 pub mod historical_snapshot;
@@ -8,4 +9,5 @@ pub mod security;
 pub mod sim_open_buy_order;
 pub mod sim_open_sell_order;
 pub mod sim_trade;
+pub mod strategy;
 pub mod trade;
