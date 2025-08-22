@@ -245,6 +245,7 @@ dependencies = [
  "mockall",
  "native-tls",
  "postgres-native-tls",
+ "rand",
  "serde",
  "serde_json",
  "tokio",

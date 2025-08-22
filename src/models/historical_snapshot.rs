@@ -48,7 +48,7 @@ impl NewHistoricalSnapshot {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
+#[derive(Clone, Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = historical_snapshot)]
 #[diesel(check_for_backend(Pg))]
 pub struct HistoricalSnapshot {
