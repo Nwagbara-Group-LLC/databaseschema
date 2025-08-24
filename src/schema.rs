@@ -453,6 +453,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     backtest_equity_curve,
     backtest_position_history,
     backtest_drawdown_periods,
+    backtest_reports,
+    backtest_report_access_log,
     exchanges,
     historical_orders,
     historical_snapshot,
@@ -471,3 +473,74 @@ diesel::allow_tables_to_appear_in_same_query!(
     optimization_iterations,
     strategy_comparisons,
 );
+
+diesel::table! {
+    backtest_reports (id) {
+        id -> Uuid,
+        backtest_result_id -> Uuid,
+        #[max_length = 255]
+        report_id -> Varchar,
+        #[max_length = 255]
+        report_name -> Varchar,
+        #[max_length = 255]
+        strategy_name -> Varchar,
+        #[max_length = 50]
+        symbol -> Varchar,
+        #[max_length = 20]
+        timeframe -> Varchar,
+        start_date -> Date,
+        end_date -> Date,
+        initial_capital -> Numeric,
+        generated_at -> Timestamptz,
+        #[max_length = 255]
+        generated_by -> Nullable<Varchar>,
+        #[max_length = 50]
+        generation_source -> Varchar,
+        backtest_duration_seconds -> Nullable<Numeric>,
+        data_points -> Nullable<Int4>,
+        include_trades -> Bool,
+        include_charts -> Bool,
+        export_formats -> Array<Text>,
+        custom_css -> Nullable<Text>,
+        #[max_length = 50]
+        template_version -> Nullable<Varchar>,
+        file_paths -> Jsonb,
+        file_sizes -> Nullable<Jsonb>,
+        #[max_length = 50]
+        storage_location -> Varchar,
+        performance_summary -> Jsonb,
+        risk_summary -> Jsonb,
+        trade_summary -> Jsonb,
+        #[max_length = 20]
+        status -> Varchar,
+        error_message -> Nullable<Text>,
+        tags -> Nullable<Array<Text>>,
+        notes -> Nullable<Text>,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+        accessed_at -> Nullable<Timestamptz>,
+        access_count -> Int4,
+    }
+}
+
+diesel::table! {
+    backtest_report_access_log (id) {
+        id -> Uuid,
+        report_id -> Uuid,
+        #[max_length = 255]
+        accessed_by -> Nullable<Varchar>,
+        #[max_length = 50]
+        access_method -> Varchar,
+        #[max_length = 20]
+        format_requested -> Nullable<Varchar>,
+        user_agent -> Nullable<Text>,
+        ip_address -> Nullable<Inet>,
+        response_time_ms -> Nullable<Int4>,
+        success -> Bool,
+        error_message -> Nullable<Text>,
+        accessed_at -> Timestamptz,
+    }
+}
+
+diesel::joinable!(backtest_reports -> backtest_results (backtest_result_id));
+diesel::joinable!(backtest_report_access_log -> backtest_reports (report_id));
