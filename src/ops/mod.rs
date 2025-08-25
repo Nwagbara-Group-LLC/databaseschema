@@ -1,4 +1,5 @@
 pub mod backtest_result_ops;
+pub mod candles_ops;
 pub mod exchange_ops;
 pub mod historical_order_ops;
 pub mod historical_snapshot_ops;

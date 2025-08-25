@@ -171,6 +171,96 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    candles_1m (timestamp, symbol, exchange) {
+        timestamp -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        open_price -> Numeric,
+        high_price -> Numeric,
+        low_price -> Numeric,
+        close_price -> Numeric,
+        volume -> Numeric,
+        trade_count -> Int8,
+    }
+}
+
+diesel::table! {
+    candles_5m (timestamp, symbol, exchange) {
+        timestamp -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        open_price -> Numeric,
+        high_price -> Numeric,
+        low_price -> Numeric,
+        close_price -> Numeric,
+        volume -> Numeric,
+        trade_count -> Int8,
+    }
+}
+
+diesel::table! {
+    candles_15m (timestamp, symbol, exchange) {
+        timestamp -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        open_price -> Numeric,
+        high_price -> Numeric,
+        low_price -> Numeric,
+        close_price -> Numeric,
+        volume -> Numeric,
+        trade_count -> Int8,
+    }
+}
+
+diesel::table! {
+    candles_1h (timestamp, symbol, exchange) {
+        timestamp -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        open_price -> Numeric,
+        high_price -> Numeric,
+        low_price -> Numeric,
+        close_price -> Numeric,
+        volume -> Numeric,
+        trade_count -> Int8,
+    }
+}
+
+diesel::table! {
+    candles_1d (timestamp, symbol, exchange) {
+        timestamp -> Timestamptz,
+        #[max_length = 7]
+        symbol -> Varchar,
+        #[max_length = 8]
+        exchange -> Varchar,
+        security_id -> Uuid,
+        exchange_id -> Uuid,
+        open_price -> Numeric,
+        high_price -> Numeric,
+        low_price -> Numeric,
+        close_price -> Numeric,
+        volume -> Numeric,
+        trade_count -> Int8,
+    }
+}
+
 diesel::joinable!(historical_orders -> exchanges (exchange_id));
 diesel::joinable!(historical_orders -> securities (security_id));
 diesel::joinable!(historical_snapshot -> exchanges (exchange_id));
@@ -446,6 +536,16 @@ diesel::joinable!(strategy_instances -> strategies (strategy_id));
 diesel::joinable!(strategy_instances -> optimization_runs (optimization_run_id));
 diesel::joinable!(optimization_runs -> strategies (strategy_id));
 diesel::joinable!(optimization_iterations -> optimization_runs (optimization_run_id));
+diesel::joinable!(candles_1m -> exchanges (exchange_id));
+diesel::joinable!(candles_1m -> securities (security_id));
+diesel::joinable!(candles_5m -> exchanges (exchange_id));
+diesel::joinable!(candles_5m -> securities (security_id));
+diesel::joinable!(candles_15m -> exchanges (exchange_id));
+diesel::joinable!(candles_15m -> securities (security_id));
+diesel::joinable!(candles_1h -> exchanges (exchange_id));
+diesel::joinable!(candles_1h -> securities (security_id));
+diesel::joinable!(candles_1d -> exchanges (exchange_id));
+diesel::joinable!(candles_1d -> securities (security_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     backtest_results,
@@ -466,6 +566,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     sim_open_sell_orders,
     sim_trades,
     trades,
+    candles_1m,
+    candles_5m,
+    candles_15m,
+    candles_1h,
+    candles_1d,
     strategies,
     strategy_parameters,
     strategy_instances,

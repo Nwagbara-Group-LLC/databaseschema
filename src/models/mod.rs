@@ -1,4 +1,5 @@
 pub mod backtest_result;
+pub mod candles;
 pub mod exchange;
 pub mod historical_order;
 pub mod historical_snapshot;
