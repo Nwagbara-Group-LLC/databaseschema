@@ -1,52 +1,545 @@
-# 🗃️ TimescaleDB Async Connection Pool (Rust)
+# 🗃️ DatabaseSchema - Enterprise Trading Database Management
 
-This Rust library provides a secure, resilient, and efficient way to manage a pool of asynchronous PostgreSQL (TimescaleDB) connections using `diesel-async`, `tokio-postgres`, and `deadpool`. It is designed for high-performance, production-grade applications that require robust database connectivity, TLS security, and seamless integration with async Rust ecosystems.
+[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)
+[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
+[![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](Dockerfile)
 
----
-
-## 📖 Table of Contents
-
-- [Features](#features)
-- [Architecture](#architecture)
-- [Dependencies](#dependencies)
-- [Setup](#setup)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Example](#example)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+An **enterprise-grade database schema and connection management system** for high-performance trading platforms. Provides secure, resilient, and efficient PostgreSQL (TimescaleDB) connectivity with advanced pooling, migration management, and time-series optimization for financial data.
 
 ---
 
-## ✨ Features
+## 🎯 **Overview**
 
-- 🔁 **Asynchronous PostgreSQL (TimescaleDB) connection pooling**
-- 🔐 **Secure TLS connections** using `native-tls`
-- ✅ **Retry logic** for acquiring connections (`tokio-retry`)
-- ♻️ **Connection recycling** with health check (`SELECT 1`)
-- 📦 **Easy configuration** via `.env` and `dotenv`
-- 🛠️ **Modular structure** for extensibility (`models`, `schema`, `ops`)
-- 📊 **TimescaleDB compatibility** for time-series data
-- 🧪 **Testable and production-ready**
+DatabaseSchema is the foundational data layer for the Trading Platform ecosystem, delivering enterprise-grade PostgreSQL connectivity with TimescaleDB time-series extensions. Built for ultra-high frequency trading environments requiring microsecond-level database operations, comprehensive audit trails, and regulatory compliance.
 
----
-
-## 🏗️ Architecture
-
-This library leverages the following core components:
-
-- **`diesel-async`**: Async ORM for Rust, providing type-safe query building and execution.
-- **`tokio-postgres`**: Async PostgreSQL driver for low-level database operations.
-- **`deadpool`**: Connection pool manager for efficient resource utilization.
-- **`native-tls`**: Enables secure TLS/SSL connections to PostgreSQL/TimescaleDB.
-- **`tokio-retry`**: Implements retry logic for robust connection acquisition.
-- **`dotenv`**: Loads environment variables from a `.env` file for easy configuration.
+### **🚀 Key Capabilities**
+- **High-Performance Pooling**: Advanced async connection pooling with deadpool
+- **TimescaleDB Integration**: Optimized for time-series financial data storage
+- **Migration Management**: Automated schema migrations with Diesel ORM
+- **Security First**: TLS encryption, connection validation, and audit logging  
+- **Production Ready**: Kubernetes deployment with comprehensive monitoring
 
 ---
 
-## 📦 Dependencies
+## 📋 **Table of Contents**
+
+- [🔥 Features](#-features)
+- [🏗️ Architecture](#%EF%B8%8F-architecture)
+- [📊 Database Schema](#-database-schema)
+- [⚡ Quick Start](#-quick-start)
+- [🔧 Configuration](#-configuration)
+- [🗄️ Migrations](#%EF%B8%8F-migrations)
+- [📦 Usage](#-usage)
+- [🧪 Testing](#-testing)
+- [🐳 Docker](#-docker)
+- [☁️ Deployment](#%EF%B8%8F-deployment)
+- [🤝 Contributing](#-contributing)
+
+---
+
+## 🔥 **Features**
+
+### **Core Database Features**
+- **Async Connection Pooling**: High-performance deadpool-postgres based connection management
+- **TimescaleDB Support**: Time-series database optimizations for financial data
+- **Migration System**: Automated schema versioning and deployment with Diesel
+- **Connection Health**: Automated health checks and connection recycling
+- **TLS Security**: Encrypted database connections with certificate validation
+
+### **Trading Platform Integration**
+- **Market Data Storage**: High-frequency tick data with microsecond timestamps
+- **Order Management**: Complete order lifecycle tracking and execution history
+- **Portfolio Tracking**: Real-time position management and P&L calculation
+- **Risk Management**: Position limits, exposure tracking, and compliance reporting
+- **Audit Trail**: Complete transaction history for regulatory compliance
+
+### **Enterprise Features**
+- **High Availability**: Connection failover and automatic reconnection
+- **Performance Monitoring**: Query performance metrics and connection pooling stats
+- **Data Integrity**: Foreign key constraints, triggers, and data validation
+- **Backup Integration**: Automated backup scheduling and point-in-time recovery
+- **Kubernetes Ready**: Helm charts for scalable cloud deployment
+
+---
+
+## 🏗️ **Architecture**
+
+### **Database Layer Architecture**
+```
+┌─────────────────────────────────────────────────────────────┐
+│                DatabaseSchema Core                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │ Connection  │    │  Migration  │    │TimescaleDB  │     │
+│  │ Pool Mgmt   │◄──►│  Manager    │◄──►│ Extensions  │     │
+│  │             │    │             │    │             │     │
+│  │ • Deadpool  │    │ • Diesel    │    │ • Hypertables│     │
+│  │ • Health    │    │ • Versioning│    │ • Compression│     │
+│  │ • Retry     │    │ • Rollback  │    │ • Partitions│     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+│         │                    │                    │         │
+│         ▼                    ▼                    ▼         │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │Schema       │    │Data Models  │    │Query        │     │
+│  │Definition   │    │& Relations  │    │Optimization │     │
+│  │             │    │             │    │             │     │
+│  │ • Tables    │    │ • Structs   │    │ • Indexing  │     │
+│  │ • Indexes   │    │ • Traits    │    │ • Caching   │     │
+│  │ • Triggers  │    │ • Validation│    │ • Prepared  │     │
+│  └─────────────┘    └─────────────┘    └─────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Integration with Trading Services**
+- **DataEngine**: Market data ingestion and real-time price storage
+- **SignalEngine**: Signal generation state and portfolio position tracking
+- **BacktestingEngine**: Historical data access and backtest result storage
+- **MessageBrokerEngine**: Event sourcing and message persistence
+
+---
+
+## 📊 **Database Schema**
+
+### **Core Trading Tables**
+```sql
+-- Securities Master Data
+CREATE TABLE securities (
+    id SERIAL PRIMARY KEY,
+    symbol VARCHAR(20) NOT NULL UNIQUE,
+    exchange VARCHAR(10) NOT NULL,
+    asset_type VARCHAR(20) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Order Book Data (TimescaleDB Hypertable)
+CREATE TABLE order_books (
+    timestamp TIMESTAMPTZ NOT NULL,
+    security_id INTEGER REFERENCES securities(id),
+    bid_price DECIMAL(20,8) NOT NULL,
+    ask_price DECIMAL(20,8) NOT NULL,
+    bid_size DECIMAL(20,8) NOT NULL,
+    ask_size DECIMAL(20,8) NOT NULL
+);
+
+SELECT create_hypertable('order_books', 'timestamp');
+
+-- Trade Execution History
+CREATE TABLE trades (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL,
+    security_id INTEGER REFERENCES securities(id),
+    price DECIMAL(20,8) NOT NULL,
+    quantity DECIMAL(20,8) NOT NULL,
+    side VARCHAR(4) NOT NULL CHECK (side IN ('BUY', 'SELL')),
+    execution_id UUID NOT NULL UNIQUE
+);
+
+-- Portfolio Positions
+CREATE TABLE positions (
+    id SERIAL PRIMARY KEY,
+    account_id VARCHAR(50) NOT NULL,
+    security_id INTEGER REFERENCES securities(id),
+    quantity DECIMAL(20,8) NOT NULL,
+    average_price DECIMAL(20,8) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(account_id, security_id)
+);
+```
+
+### **Migration History**
+| Migration | Description | Date |
+|-----------|-------------|------|
+| `2024-12-27-005549_create_securities` | Securities master table | 2024-12-27 |
+| `2024-12-27-005559_create_exchanges` | Exchange configuration | 2024-12-27 |
+| `2024-12-27-005607_create_order_books` | Order book data storage | 2024-12-27 |
+| `2025-02-08-122653_create_sim_buy_orders` | Simulation buy orders | 2025-02-08 |
+| `2025-08-17-000001_create_backtest_results` | Backtest result storage | 2025-08-17 |
+
+---
+
+## ⚡ **Quick Start**
+
+### **Installation**
+Add to your `Cargo.toml`:
+```toml
+[dependencies]
+databaseschema = { path = "../databaseschema" }
+diesel = { version = "2.0", features = ["postgres", "chrono"] }
+diesel-async = { version = "0.4", features = ["postgres", "deadpool"] }
+tokio = { version = "1.0", features = ["full"] }
+```
+
+### **Basic Usage**
+```rust
+use databaseschema::establish_connection;
+use diesel_async::RunQueryDsl;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create database connection pool
+    let pool = establish_connection().await?;
+    
+    // Get connection from pool
+    let mut conn = pool.get().await?;
+    
+    // Query securities
+    use databaseschema::schema::securities::dsl::*;
+    let results = securities
+        .filter(symbol.eq("BTCUSD"))
+        .load::<Security>(&mut conn)
+        .await?;
+        
+    println!("Found {} securities", results.len());
+    Ok(())
+}
+```
+
+---
+
+## 🔧 **Configuration**
+
+### **Environment Variables**
+Create a `.env` file:
+```env
+# Database Configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/trading_platform
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=trading_platform
+POSTGRES_PASSWORD=secure_password
+POSTGRES_DB=trading_platform
+
+# Connection Pool Settings
+DATABASE_POOL_MAX_SIZE=100
+DATABASE_CONNECTION_TIMEOUT=30
+DATABASE_IDLE_TIMEOUT=600
+DATABASE_MAX_LIFETIME=3600
+
+# TLS Configuration
+DATABASE_TLS_ENABLED=true
+DATABASE_TLS_CERT_PATH=/path/to/client.crt
+DATABASE_TLS_KEY_PATH=/path/to/client.key
+DATABASE_TLS_CA_PATH=/path/to/ca.crt
+
+# TimescaleDB Configuration
+TIMESCALEDB_ENABLED=true
+TIMESCALEDB_COMPRESSION=true
+TIMESCALEDB_CHUNK_TIME_INTERVAL=1h
+```
+
+### **Production Settings**
+| Parameter | Development | Production | High-Frequency |
+|-----------|-------------|------------|----------------|
+| `DATABASE_POOL_MAX_SIZE` | 10 | 100 | 500 |
+| `DATABASE_CONNECTION_TIMEOUT` | 30s | 10s | 5s |
+| `DATABASE_IDLE_TIMEOUT` | 600s | 300s | 120s |
+| `TIMESCALEDB_CHUNK_TIME_INTERVAL` | 1h | 15m | 1m |
+
+---
+
+## 🗄️ **Migrations**
+
+### **Running Migrations**
+```bash
+# Install Diesel CLI
+cargo install diesel_cli --no-default-features --features postgres
+
+# Setup database
+diesel setup
+
+# Run all pending migrations
+diesel migration run
+
+# Rollback last migration
+diesel migration revert
+
+# Check migration status
+diesel migration list
+```
+
+### **Creating New Migrations**
+```bash
+# Create new migration
+diesel migration generate create_new_table
+
+# Edit migration files
+# migrations/YYYY-MM-DD-HHMMSS_create_new_table/up.sql
+# migrations/YYYY-MM-DD-HHMMSS_create_new_table/down.sql
+
+# Test migration
+diesel migration run
+diesel migration revert
+diesel migration run
+```
+
+---
+
+## 📦 **Usage Examples**
+
+### **Market Data Storage**
+```rust
+use databaseschema::{models::OrderBook, establish_connection};
+use diesel_async::RunQueryDsl;
+use chrono::Utc;
+
+async fn store_market_data() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = establish_connection().await?;
+    let mut conn = pool.get().await?;
+    
+    let order_book = OrderBook {
+        timestamp: Utc::now().naive_utc(),
+        security_id: 1,
+        bid_price: BigDecimal::from_str("50000.00")?,
+        ask_price: BigDecimal::from_str("50001.00")?,
+        bid_size: BigDecimal::from_str("1.5")?,
+        ask_size: BigDecimal::from_str("2.0")?,
+    };
+    
+    diesel::insert_into(order_books::table)
+        .values(&order_book)
+        .execute(&mut conn)
+        .await?;
+        
+    Ok(())
+}
+```
+
+### **Trade Execution Tracking**
+```rust
+async fn record_trade() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = establish_connection().await?;
+    let mut conn = pool.get().await?;
+    
+    let trade = Trade {
+        timestamp: Utc::now().naive_utc(),
+        security_id: 1,
+        price: BigDecimal::from_str("50000.50")?,
+        quantity: BigDecimal::from_str("1.0")?,
+        side: "BUY".to_string(),
+        execution_id: Uuid::new_v4(),
+    };
+    
+    diesel::insert_into(trades::table)
+        .values(&trade)
+        .execute(&mut conn)
+        .await?;
+        
+    Ok(())
+}
+```
+
+### **Portfolio Position Updates**
+```rust
+async fn update_position() -> Result<(), Box<dyn std::error::Error>> {
+    let pool = establish_connection().await?;
+    let mut conn = pool.get().await?;
+    
+    diesel::insert_into(positions::table)
+        .values(&Position {
+            account_id: "trader123".to_string(),
+            security_id: 1,
+            quantity: BigDecimal::from_str("10.5")?,
+            average_price: BigDecimal::from_str("49850.25")?,
+            updated_at: Utc::now().naive_utc(),
+        })
+        .on_conflict((account_id, security_id))
+        .do_update()
+        .set((
+            quantity.eq(excluded(quantity)),
+            average_price.eq(excluded(average_price)),
+            updated_at.eq(Utc::now().naive_utc()),
+        ))
+        .execute(&mut conn)
+        .await?;
+        
+    Ok(())
+}
+```
+
+---
+
+## 🧪 **Testing**
+
+### **Running Tests**
+```bash
+# Start test database
+docker run -d --name postgres-test \
+  -e POSTGRES_PASSWORD=test \
+  -p 5432:5432 \
+  timescale/timescaledb:latest-pg15
+
+# Set test database URL
+export DATABASE_URL=postgresql://postgres:test@localhost:5432/test
+
+# Run migrations
+diesel setup
+diesel migration run
+
+# Run tests
+cargo test
+
+# Cleanup
+docker stop postgres-test && docker rm postgres-test
+```
+
+### **Integration Tests**
+```bash
+# Run integration tests
+cargo test --test integration_tests
+
+# Run with logging
+RUST_LOG=debug cargo test
+```
+
+---
+
+## 🐳 **Docker**
+
+### **Docker Build**
+```bash
+# Build database schema container
+docker build -t database-schema .
+
+# Run with PostgreSQL
+docker run -d --name postgres \
+  -e POSTGRES_PASSWORD=secure_password \
+  -p 5432:5432 \
+  timescale/timescaledb:latest-pg15
+
+docker run --link postgres:database \
+  -e DATABASE_URL=postgresql://postgres:secure_password@database:5432/trading_platform \
+  database-schema
+```
+
+### **Docker Compose**
+```yaml
+version: '3.8'
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_PASSWORD: secure_password
+      POSTGRES_DB: trading_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+      
+  database-schema:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://postgres:secure_password@postgres:5432/trading_platform
+
+volumes:
+  postgres_data:
+```
+
+---
+
+## ☁️ **Deployment**
+
+### **Kubernetes with Helm**
+```bash
+# Install TimescaleDB
+helm repo add timescale https://charts.timescale.com/
+helm install timescaledb timescale/timescaledb-single
+
+# Deploy database schema
+helm install database-schema ./helm/database-schema \
+  --set postgresql.host=timescaledb \
+  --set postgresql.password=secure_password
+```
+
+### **Production Considerations**
+- **High Availability**: Use TimescaleDB clustering or PostgreSQL streaming replication
+- **Backup Strategy**: Implement automated daily backups with point-in-time recovery
+- **Monitoring**: Deploy PostgreSQL Exporter for Prometheus monitoring
+- **Security**: Enable SSL/TLS, rotate passwords, and implement network policies
+- **Performance**: Monitor slow queries and optimize indexes for trading workloads
+
+---
+
+## 📊 **Performance Optimization**
+
+### **TimescaleDB Hypertables**
+```sql
+-- Create hypertable for high-frequency data
+SELECT create_hypertable('order_books', 'timestamp', 
+                        chunk_time_interval => INTERVAL '1 minute');
+
+-- Enable compression
+ALTER TABLE order_books SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'security_id'
+);
+
+-- Automated compression policy
+SELECT add_compression_policy('order_books', INTERVAL '1 hour');
+```
+
+### **Indexing Strategy**
+```sql
+-- Composite indexes for trading queries
+CREATE INDEX idx_order_books_security_time 
+ON order_books (security_id, timestamp DESC);
+
+CREATE INDEX idx_trades_execution_time 
+ON trades (execution_id, timestamp DESC);
+
+CREATE INDEX idx_positions_account_security 
+ON positions (account_id, security_id);
+```
+
+---
+
+## 🤝 **Contributing**
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/schema-enhancement`)
+3. Run tests (`cargo test`)
+4. Create migration if needed (`diesel migration generate`)
+5. Commit your changes (`git commit -m 'Add schema enhancement'`)
+6. Push to the branch (`git push origin feature/schema-enhancement`)
+7. Open a Pull Request
+
+### **Development Setup**
+```bash
+# Clone repository
+git clone https://github.com/Nwagbara-Group-LLC/databaseschema.git
+cd databaseschema
+
+# Install dependencies
+cargo build
+
+# Setup database
+docker run -d --name dev-postgres \
+  -e POSTGRES_PASSWORD=dev \
+  -p 5432:5432 \
+  timescale/timescaledb:latest-pg15
+
+# Run migrations
+diesel setup
+diesel migration run
+```
+
+---
+
+## 📜 **License**
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🏢 **About Nwagbara Group LLC**
+
+DatabaseSchema is developed and maintained by Nwagbara Group LLC, providing enterprise-grade database solutions for high-frequency trading platforms. Our systems process billions of database operations daily with microsecond-level performance.
+
+**Contact**: [info@nwagbara-group.com](mailto:info@nwagbara-group.com)
 
 - [`diesel-async`](https://docs.rs/diesel-async)
 - [`tokio-postgres`](https://docs.rs/tokio-postgres)
