@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "database-schema.fullname" . }}-migration
+  labels:
+    {{- include "database-schema.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+spec:
+  schedule: {{ .Values.migration.schedule | quote }}
+  failedJobsHistoryLimit: {{ .Values.migration.failedJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ .Values.migration.successfulJobsHistoryLimit }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+      backoffLimit: {{ .Values.migration.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "database-schema.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: migration
+        spec:
+          restartPolicy: {{ .Values.migration.restartPolicy }}
+          serviceAccountName: {{ include "database-schema.serviceAccountName" . }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          initContainers:
+          - name: wait-for-db
+            image: postgres:15-alpine
+            command: 
+            - sh
+            - -c
+            - |
+              until pg_isready -h {{ .Values.database.host }} -p {{ .Values.database.port }} -U {{ .Values.database.user }}; do
+                echo "Waiting for database..."
+                sleep 2
+              done
+            env:
+            - name: PGUSER
+              value: {{ .Values.database.user | quote }}
+            securityContext:
+              {{- toYaml .Values.securityContext | nindent 14 }}
+          containers:
+          - name: migration
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - /usr/local/bin/diesel
+            - migration
+            - run
+            env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.database.user }}:$(POSTGRES_PASSWORD)@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-postgres" (include "database-schema.fullname" .)) }}
+                  key: {{ .Values.database.existingSecretKey | default "password" }}
+            securityContext:
+              {{- toYaml .Values.securityContext | nindent 14 }}
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir: {}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

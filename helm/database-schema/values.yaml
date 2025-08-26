@@ -1,0 +1,86 @@
+# Default values for database-schema
+replicaCount: 1
+
+image:
+  repository: tradingplatformacr.azurecr.io/database-schema
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Database configuration
+database:
+  host: postgresql
+  port: 5432
+  name: trading_platform
+  user: postgres
+  existingSecret: ""
+  existingSecretKey: password
+
+# Migration configuration
+migration:
+  enabled: true
+  schedule: "0 2 * * 0" # Weekly at 2 AM Sunday
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 3
+  activeDeadlineSeconds: 3600
+  backoffLimit: 3
+  restartPolicy: OnFailure
+  
+# Backup configuration  
+backup:
+  enabled: true
+  schedule: "0 1 * * *" # Daily at 1 AM
+  retention: "30d"
+  storage:
+    size: 10Gi
+    storageClass: ""
+  
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+securityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# PostgreSQL subchart configuration
+postgresql:
+  enabled: false
+  auth:
+    postgresPassword: ""
+    database: trading_platform
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi

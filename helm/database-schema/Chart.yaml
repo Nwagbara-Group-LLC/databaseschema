@@ -1,0 +1,22 @@
+apiVersion: v2
+name: database-schema
+description: Database schema management and migrations for Trading Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - database
+  - migrations
+  - postgresql
+  - trading-platform
+home: https://github.com/Nwagbara-Group-LLC/databaseschema
+maintainers:
+  - name: Trading Platform Team
+    email: platform@nwagbara-group.com
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+annotations:
+  category: Database
