@@ -15,6 +15,7 @@ database:
   host: postgresql
   port: 5432
   name: trading_platform
+  database: trading_platform  # Add missing database field
   user: postgres
   existingSecret: ""
   existingSecretKey: password
@@ -76,11 +77,16 @@ affinity: {}
 
 # PostgreSQL subchart configuration
 postgresql:
-  enabled: false
+  enabled: true
   auth:
-    postgresPassword: ""
+    postgresPassword: changeme
+    username: postgres
+    password: changeme
     database: trading_platform
   primary:
+    service:
+      ports:
+        postgresql: 5432
     persistence:
       enabled: true
       size: 50Gi
