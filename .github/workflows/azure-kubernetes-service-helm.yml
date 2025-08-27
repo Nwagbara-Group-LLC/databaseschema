@@ -41,12 +41,12 @@ on:
 
 env:
   AZURE_CONTAINER_REGISTRY: "prodtradingbotregistry"
-  CONTAINER_NAME: "database-schema"
+  CONTAINER_NAME: "databaseschema"
   RESOURCE_GROUP: "prod-aks-trading-bot-rg"
   CLUSTER_NAME: "prod-trading-bot-cluster"
-  CHART_PATH: "./helm/database-schema"
-  BASE_CHART_OVERRIDE_PATH: "./helm/database-schema/values.yaml"
-  ENV_CHART_OVERRIDE_PATH: "./helm/database-schema/values-prod.yaml"
+  CHART_PATH: "./databaseschema-helm"
+  BASE_CHART_OVERRIDE_PATH: "./databaseschema-helm/values.yaml"
+  ENV_CHART_OVERRIDE_PATH: "./databaseschema-helm/values-prod.yaml"
 
 jobs:
   buildImage:
