@@ -11,4 +11,5 @@ pub mod sim_open_buy_order;
 pub mod sim_open_sell_order;
 pub mod sim_trade;
 pub mod strategy;
+pub mod strategy_order;
 pub mod trade;

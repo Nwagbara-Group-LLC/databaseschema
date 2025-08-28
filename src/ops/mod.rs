@@ -8,4 +8,5 @@ pub mod open_sell_order_ops;
 pub mod order_book_ops;
 pub mod securities_ops;
 pub mod strategy_ops;
+pub mod strategy_order_ops;
 pub mod trades_ops;

@@ -1,5 +1,27 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "order_status"))]
+    pub struct Order_status;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "order_side"))]
+    pub struct Order_side;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "order_type"))]
+    pub struct Order_type;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "time_in_force"))]
+    pub struct Time_in_force;
+
+    #[derive(diesel::query_builder::QueryId, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "execution_urgency"))]
+    pub struct Execution_urgency;
+}
+
 diesel::table! {
     exchanges (exchange_id) {
         created_at -> Timestamptz,
@@ -647,5 +669,122 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::*;
+
+    strategy_orders (id) {
+        id -> Uuid,
+        signal_id -> Int8,
+        strategy_instance_id -> Nullable<Uuid>,
+        parent_order_id -> Nullable<Uuid>,
+        #[max_length = 255]
+        exchange_order_id -> Nullable<Varchar>,
+        #[max_length = 255]
+        unique_id -> Varchar,
+        #[max_length = 20]
+        symbol -> Varchar,
+        #[max_length = 50]
+        exchange -> Varchar,
+        side -> Order_side,
+        order_type -> Order_type,
+        time_in_force -> Nullable<Time_in_force>,
+        original_quantity -> Numeric,
+        remaining_quantity -> Numeric,
+        filled_quantity -> Nullable<Numeric>,
+        price -> Nullable<Numeric>,
+        stop_price -> Nullable<Numeric>,
+        avg_fill_price -> Nullable<Numeric>,
+        status -> Order_status,
+        urgency -> Nullable<Execution_urgency>,
+        fees_paid -> Nullable<Numeric>,
+        #[max_length = 255]
+        strategy_name -> Varchar,
+        #[max_length = 50]
+        strategy_version -> Nullable<Varchar>,
+        signal_confidence -> Nullable<Numeric>,
+        signal_flags -> Nullable<Int4>,
+        risk_score -> Nullable<Numeric>,
+        compliance_checked -> Nullable<Bool>,
+        risk_limits_checked -> Nullable<Bool>,
+        #[max_length = 50]
+        routing_algorithm -> Nullable<Varchar>,
+        #[max_length = 50]
+        execution_venue -> Nullable<Varchar>,
+        child_order_count -> Nullable<Int4>,
+        slippage_bps -> Nullable<Int4>,
+        implementation_shortfall_bps -> Nullable<Int4>,
+        market_impact_bps -> Nullable<Int4>,
+        order_metadata -> Nullable<Jsonb>,
+        execution_context -> Nullable<Jsonb>,
+        tags -> Nullable<Array<Varchar>>,
+        rejection_reason -> Nullable<Text>,
+        error_message -> Nullable<Text>,
+        retry_count -> Nullable<Int4>,
+        signal_timestamp -> Timestamptz,
+        order_created_at -> Timestamptz,
+        order_submitted_at -> Nullable<Timestamptz>,
+        first_fill_at -> Nullable<Timestamptz>,
+        last_fill_at -> Nullable<Timestamptz>,
+        completed_at -> Nullable<Timestamptz>,
+        #[max_length = 255]
+        created_by -> Nullable<Varchar>,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+
+    strategy_order_fills (id) {
+        id -> Uuid,
+        order_id -> Uuid,
+        #[max_length = 255]
+        fill_id -> Varchar,
+        #[max_length = 255]
+        trade_id -> Nullable<Varchar>,
+        quantity -> Numeric,
+        price -> Numeric,
+        fees -> Nullable<Numeric>,
+        #[max_length = 10]
+        fee_currency -> Nullable<Varchar>,
+        bid_price -> Nullable<Numeric>,
+        ask_price -> Nullable<Numeric>,
+        mid_price -> Nullable<Numeric>,
+        spread_bps -> Nullable<Int4>,
+        is_maker -> Nullable<Bool>,
+        #[max_length = 10]
+        liquidity_flag -> Nullable<Varchar>,
+        fill_timestamp -> Timestamptz,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::*;
+
+    strategy_order_state_changes (id) {
+        id -> Uuid,
+        order_id -> Uuid,
+        previous_status -> Nullable<Order_status>,
+        new_status -> Order_status,
+        previous_quantity -> Nullable<Numeric>,
+        new_quantity -> Nullable<Numeric>,
+        #[max_length = 255]
+        change_reason -> Nullable<Varchar>,
+        #[max_length = 100]
+        triggered_by -> Nullable<Varchar>,
+        exchange_message -> Nullable<Text>,
+        state_data -> Nullable<Jsonb>,
+        changed_at -> Timestamptz,
+        #[max_length = 255]
+        changed_by -> Nullable<Varchar>,
+    }
+}
+
 diesel::joinable!(backtest_reports -> backtest_results (backtest_result_id));
 diesel::joinable!(backtest_report_access_log -> backtest_reports (report_id));
+diesel::joinable!(strategy_order_fills -> strategy_orders (order_id));
+diesel::joinable!(strategy_order_state_changes -> strategy_orders (order_id));
+diesel::joinable!(strategy_orders -> strategy_instances (strategy_instance_id));
