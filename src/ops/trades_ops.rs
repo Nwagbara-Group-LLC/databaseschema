@@ -1,12 +1,12 @@
 use crate::{get_timescale_connection, models::trade::{NewTrade, Trade}, CustomAsyncPgConnectionManager};
 use deadpool::managed::Pool;
 use diesel::{prelude::*, result::Error, upsert::excluded};
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
 
-pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewTrade>) -> Result<(), Error> {
-    println!("Creating trades: {:?}", orders);
+pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, new_trades: Vec<NewTrade>) -> Result<(), Error> {
+    println!("Creating {} trades", new_trades.len());
     use crate::schema::trades::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -15,26 +15,31 @@ pub async fn create_trades(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orde
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    let result = diesel::insert_into(trades)
-        .values(&orders)
-        .on_conflict((created_at, trade_id))
-        .do_update()
-        .set((
-            side.eq(excluded(side)),
-            price.eq(excluded(price)),
-            quantity.eq(excluded(quantity)),
-        ))
-        .execute(&mut connection)
-        .await;
 
-        match result {
-            Ok(_) => {
-                println!("Successfully saved new trades");
-            },
-            Err(e) => {
-                eprintln!("Error saving new trades: {}", e);
-            }
+        // Process in batches to handle large datasets
+        const BATCH_SIZE: usize = 1000;
+        
+        for chunk in new_trades.chunks(BATCH_SIZE) {
+            connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                diesel::insert_into(trades)
+                    .values(chunk)
+                    .on_conflict((created_at, trade_id))
+                    .do_update()
+                    .set((
+                        side.eq(excluded(side)),
+                        price.eq(excluded(price)),
+                        quantity.eq(excluded(quantity)),
+                    ))
+                    .execute(conn)
+                    .await
+                    .map_err(|e| {
+                        eprintln!("Error saving trades batch: {}", e);
+                        e
+                    })
+            })).await?;
         }
+        
+        println!("Successfully saved {} trades", new_trades.len());
         Ok(())
     }).await
 }

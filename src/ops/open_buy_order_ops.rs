@@ -1,9 +1,9 @@
 use crate::{get_timescale_connection, models::open_buy_order::{NewOpenBuyOrder, OpenBuyOrder}, CustomAsyncPgConnectionManager};
 use bigdecimal::BigDecimal;
 use deadpool::managed::Pool;
-use diesel::{prelude::*, result::Error, sql_query, upsert::excluded};
+use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
-use diesel_async::RunQueryDsl;
+use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::{cmp::Reverse, collections::BTreeMap, sync::Arc};
 
@@ -44,7 +44,7 @@ pub async fn create_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
 }
 
 pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenBuyOrder>) -> Result<Vec<OpenBuyOrder>, Error> {
-    println!("Creating open buy orders: {:?}", orders);
+    println!("Creating {} open buy orders", orders.len());
     use crate::schema::open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -53,34 +53,35 @@ pub async fn create_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    let result = diesel::insert_into(open_buy_orders)
-            .values(&orders)
-            .on_conflict((created_at, unique_id))
-            .do_update()
-            .set((
-                // Specify the columns you want to update here
-                price_level.eq(excluded(price_level)),
-                buy_quantity.eq(excluded(buy_quantity)),
-                // Add more columns as needed
-            ))
-            .execute(&mut connection)
-            .await;
 
-        match result {
-            Ok(_) => {},
-            Err(e) => {
-                eprintln!("Error saving new open buy orders: {}", e);
-            }
-        }
+        // Use transaction for atomicity
+        connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+            // Batch insert with conflict resolution
+            diesel::insert_into(open_buy_orders)
+                .values(&orders)
+                .on_conflict((created_at, unique_id))
+                .do_update()
+                .set((
+                    price_level.eq(excluded(price_level)),
+                    buy_quantity.eq(excluded(buy_quantity)),
+                ))
+                .execute(conn)
+                .await?;
 
-        open_buy_orders
-            .filter(unique_id.eq_any(orders.iter().map(|order| order.unique_id.clone())))
-            .load::<OpenBuyOrder>(&mut connection)
-            .await
-            .map_err(|e| {
-                eprintln!("Error fetching new open buy orders: {}", e);
-                e
-            })
+            // Fetch the inserted/updated records
+            let unique_ids: Vec<String> = orders.iter()
+                .map(|order| order.unique_id.clone())
+                .collect();
+                
+            open_buy_orders
+                .filter(unique_id.eq_any(&unique_ids))
+                .load::<OpenBuyOrder>(conn)
+                .await
+                .map_err(|e| {
+                    eprintln!("Error fetching created buy orders: {}", e);
+                    e
+                })
+        })).await
     }).await
 }
 
@@ -109,7 +110,7 @@ pub async fn modify_open_buy_orders(
     pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
     updates: Vec<(&String, &BigDecimal, &BigDecimal)>,
 ) -> Result<Vec<OpenBuyOrder>, Error> {
-    println!("Modifying open buy orders: {:?}", updates);
+    println!("Modifying {} open buy orders", updates.len());
     if updates.is_empty() {
         return Ok(vec![]);
     }
@@ -121,36 +122,41 @@ pub async fn modify_open_buy_orders(
             .await
             .expect("Error connecting to database");
 
-        let mut unique_ids = Vec::with_capacity(updates.len());
-        let mut price_level_cases = String::new();
-        let mut buy_quantity_cases = String::new();
-
-        for (id, new_price, new_quantity) in &updates {
-            unique_ids.push(format!("'{}'", id));
-            price_level_cases.push_str(&format!("WHEN unique_id = '{}' THEN '{}' ", id, new_price));
-            buy_quantity_cases.push_str(&format!("WHEN unique_id = '{}' THEN '{}' ", id, new_quantity));
+        use crate::schema::open_buy_orders::dsl::*;
+        
+        let mut all_results = Vec::with_capacity(updates.len());
+        
+        // Process in batches to avoid overwhelming database and ensure atomicity
+        const BATCH_SIZE: usize = 50;
+        
+        for chunk in updates.chunks(BATCH_SIZE) {
+            // Use transaction to ensure atomicity within each batch
+            let batch_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                let mut chunk_results = Vec::with_capacity(chunk.len());
+                
+                // Use parameterized queries - NO SQL INJECTION RISK
+                for (id, new_price, new_quantity) in chunk {
+                    let result = diesel::update(open_buy_orders.filter(unique_id.eq(*id)))
+                        .set((
+                            price_level.eq(*new_price), 
+                            buy_quantity.eq(*new_quantity)
+                        ))
+                        .get_result::<OpenBuyOrder>(conn)
+                        .await
+                        .map_err(|e| {
+                            eprintln!("Error modifying buy order {}: {}", id, e);
+                            e
+                        })?;
+                    chunk_results.push(result);
+                }
+                Ok(chunk_results)
+            })).await?;
+            
+            all_results.extend(batch_results);
         }
-
-        let unique_ids_sql = unique_ids.join(", ");
-
-        let update_query = format!(
-            "UPDATE open_buy_orders SET 
-                price_level = CASE {} ELSE price_level END, 
-                buy_quantity = CASE {} ELSE buy_quantity END 
-            WHERE unique_id IN ({}) 
-            RETURNING *;",
-            price_level_cases, buy_quantity_cases, unique_ids_sql
-        );
-
-        sql_query(update_query)
-            .load::<OpenBuyOrder>(&mut connection)
-            .await
-            .map_err(|e| {
-                eprintln!("Error modifying open buy orders: {}", e);
-                e
-            })
-    })
-    .await
+        
+        Ok(all_results)
+    }).await
 }
 
 pub async fn delete_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
@@ -173,8 +179,8 @@ pub async fn delete_open_buy_order(pool: Arc<Pool<CustomAsyncPgConnectionManager
     }).await
 }
 
-pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &Vec<&String>) -> Result<usize, Error> {
-    println!("Deleting open buy orders: {:?}", ids);
+pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &[String]) -> Result<usize, Error> {
+    println!("Deleting {} open buy orders", ids.len());
     use crate::schema::open_buy_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -183,13 +189,23 @@ pub async fn delete_open_buy_orders(pool: Arc<Pool<CustomAsyncPgConnectionManage
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .expect("Error connecting to database");
-    diesel::delete(open_buy_orders.filter(unique_id.eq_any(ids)))
-        .execute(&mut connection)
-        .await
-        .map_err(|e| {
-            eprintln!("Error deleting open buy orders: {}", e);
-            e
-        })
+
+        // Process in batches for large deletions
+        const BATCH_SIZE: usize = 100;
+        let mut total_deleted = 0;
+        
+        for chunk in ids.chunks(BATCH_SIZE) {
+            let deleted = diesel::delete(open_buy_orders.filter(unique_id.eq_any(chunk)))
+                .execute(&mut connection)
+                .await
+                .map_err(|e| {
+                    eprintln!("Error deleting buy orders batch: {}", e);
+                    e
+                })?;
+            total_deleted += deleted;
+        }
+        
+        Ok(total_deleted)
     }).await
 }
 
