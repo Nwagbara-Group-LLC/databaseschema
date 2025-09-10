@@ -26,8 +26,20 @@ pub struct SimOpenBuyOrder {
     price_level: BigDecimal,
     #[diesel(sql_type = Numeric)]
     buy_quantity: BigDecimal,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
-    created_id: Uuid,
+    #[diesel(sql_type = diesel::sql_types::Nullable<diesel::sql_types::Uuid>)]
+    created_id: Option<Uuid>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Insertable)]
+#[diesel(table_name = sim_open_buy_orders)]
+pub struct NewSimOpenBuyOrder {
+    pub backtest_id: Uuid,
+    pub symbol: String,
+    pub exchange: String,
+    pub unique_id: String,
+    pub price_level: BigDecimal,
+    pub buy_quantity: BigDecimal,
+    pub created_id: Option<Uuid>,
 }
 
 impl SimOpenBuyOrder {
@@ -49,7 +61,7 @@ impl SimOpenBuyOrder {
             unique_id: unique_id.to_string(),
             price_level: price_level.clone(),
             buy_quantity: buy_quantity.clone(),
-            created_id: created_id.unwrap_or(Uuid::nil()),
+            created_id: Some(created_id.unwrap_or(Uuid::nil())),
         }
     }
 
@@ -62,7 +74,7 @@ impl SimOpenBuyOrder {
     }
 
     pub fn get_created_id(&self) -> Option<Uuid> {
-        Some(self.created_id)
+        self.created_id
     }
 
     pub fn get_exchange(&self) -> &str {

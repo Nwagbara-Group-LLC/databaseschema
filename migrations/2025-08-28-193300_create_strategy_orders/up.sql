@@ -50,10 +50,10 @@ CREATE TYPE execution_urgency AS ENUM (
 -- Main strategy orders table - tracks all orders created by strategies
 CREATE TABLE strategy_orders (
     -- Primary identifiers
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID DEFAULT uuid_generate_v4(),
     signal_id BIGINT NOT NULL,                      -- Links to the signal that generated this order
-    strategy_instance_id UUID REFERENCES strategy_instances(id),  -- Links to strategy instance
-    parent_order_id UUID REFERENCES strategy_orders(id),          -- For child orders in routing
+    strategy_instance_id UUID,                      -- Links to strategy instance (nullable for now)
+    parent_order_id UUID,                           -- For child orders in routing (no FK for now)
     
     -- Order identification
     exchange_order_id VARCHAR(255),                 -- Exchange-specific order ID when submitted
@@ -104,7 +104,7 @@ CREATE TABLE strategy_orders (
     -- Metadata and context
     order_metadata JSONB,                           -- Additional order context
     execution_context JSONB,                        -- Market context at execution
-    tags VARCHAR(100)[],                            -- Tags for categorization
+    tags TEXT[],                                     -- Tags for categorization
     
     -- Rejection/failure details
     rejection_reason TEXT,
@@ -126,8 +126,8 @@ CREATE TABLE strategy_orders (
 
 -- Order fills table - tracks individual fill events
 CREATE TABLE strategy_order_fills (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID NOT NULL REFERENCES strategy_orders(id) ON DELETE CASCADE,
+    id UUID DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL, -- References strategy_orders(id) but no FK constraint due to partitioning
     
     -- Fill details
     fill_id VARCHAR(255) NOT NULL,                  -- Exchange-specific fill ID
@@ -155,8 +155,8 @@ CREATE TABLE strategy_order_fills (
 
 -- Order state changes table - full audit trail
 CREATE TABLE strategy_order_state_changes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID NOT NULL REFERENCES strategy_orders(id) ON DELETE CASCADE,
+    id UUID DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL, -- References strategy_orders(id) but no FK constraint due to partitioning
     
     -- State change details
     previous_status order_status,
@@ -217,12 +217,21 @@ SELECT
     
 FROM strategy_orders so
 LEFT JOIN strategy_order_fills sof ON so.id = sof.order_id
-GROUP BY so.id;
+GROUP BY so.id, so.strategy_name, so.strategy_instance_id, so.symbol, so.exchange, so.side, 
+         so.order_type, so.original_quantity, so.filled_quantity, so.avg_fill_price, so.price, 
+         so.status, so.fees_paid, so.slippage_bps, so.implementation_shortfall_bps, 
+         so.market_impact_bps, so.order_submitted_at, so.order_created_at, so.first_fill_at, 
+         so.completed_at, so.signal_timestamp;
 
 -- Create TimescaleDB hypertable for high-performance time-series operations
 SELECT create_hypertable('strategy_orders', 'order_created_at', chunk_time_interval => interval '1 day');
 SELECT create_hypertable('strategy_order_fills', 'fill_timestamp', chunk_time_interval => interval '1 hour');
 SELECT create_hypertable('strategy_order_state_changes', 'changed_at', chunk_time_interval => interval '1 hour');
+
+-- Add primary keys after hypertable creation (must include partitioning column)
+ALTER TABLE strategy_orders ADD CONSTRAINT strategy_orders_pkey PRIMARY KEY (id, order_created_at);
+ALTER TABLE strategy_order_fills ADD CONSTRAINT strategy_order_fills_pkey PRIMARY KEY (id, fill_timestamp);
+ALTER TABLE strategy_order_state_changes ADD CONSTRAINT strategy_order_state_changes_pkey PRIMARY KEY (id, changed_at);
 
 -- Compression and retention policies
 ALTER TABLE strategy_orders SET (
@@ -235,6 +244,12 @@ ALTER TABLE strategy_order_fills SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'order_id',
     timescaledb.compress_orderby = 'fill_timestamp DESC'
+);
+
+ALTER TABLE strategy_order_state_changes SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'order_id',
+    timescaledb.compress_orderby = 'changed_at DESC'
 );
 
 SELECT add_compression_policy('strategy_orders', INTERVAL '7 days');
@@ -273,6 +288,6 @@ CREATE INDEX idx_strategy_orders_performance ON strategy_orders (strategy_name, 
 CREATE INDEX idx_strategy_orders_active ON strategy_orders (status, order_created_at) 
     WHERE status IN ('pending', 'submitted', 'partially_filled');
 
--- Unique constraints
-CREATE UNIQUE INDEX idx_strategy_orders_unique_id ON strategy_orders (unique_id);
-CREATE UNIQUE INDEX idx_order_fills_unique ON strategy_order_fills (order_id, fill_id);
+-- Unique constraints (must include partitioning columns for hypertables)
+CREATE UNIQUE INDEX idx_strategy_orders_unique_id ON strategy_orders (unique_id, order_created_at);
+CREATE UNIQUE INDEX idx_order_fills_unique ON strategy_order_fills (order_id, fill_id, fill_timestamp);

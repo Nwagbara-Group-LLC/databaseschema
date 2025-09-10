@@ -1,12 +1,30 @@
-use crate::{get_timescale_connection, models::historical_snapshot::{HistoricalSnapshot, NewHistoricalSnapshot}, CustomAsyncPgConnectionManager};
-use deadpool::managed::Pool;
+use crate::{get_timescale_connection, models::historical_snapshot::{HistoricalSnapshot, NewHistoricalSnapshot}};
+use diesel_async::pooled_connection::deadpool;
+use diesel_async::AsyncPgConnection;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
+use tracing::{info, error, warn};
 use std::sync::Arc;
 
-pub async fn create_historical_snapshot(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, snapshots: Vec<NewHistoricalSnapshot>) -> Result<Vec<HistoricalSnapshot>, Error> {
-    println!("Creating {} historical snapshots", snapshots.len());
+pub async fn create_historical_snapshot(pool: Arc<deadpool::Pool<AsyncPgConnection>>, snapshots: Vec<NewHistoricalSnapshot>) -> Result<Vec<HistoricalSnapshot>, Error> {
+    if snapshots.is_empty() {
+        warn!("Attempted to create historical snapshots with empty input");
+        return Err(Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new("Cannot create snapshots with empty input".to_string())
+        ));
+    }
+    
+    if snapshots.len() > 10000 {
+        warn!("Large batch size for historical snapshots: {}", snapshots.len());
+        return Err(Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new("Batch size too large (max 10000)".to_string())
+        ));
+    }
+    
+    info!("Creating {} historical snapshots", snapshots.len());
     use crate::schema::historical_snapshot::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -48,14 +66,30 @@ pub async fn create_historical_snapshot(pool: Arc<Pool<CustomAsyncPgConnectionMa
                 .load::<HistoricalSnapshot>(conn)
                 .await
                 .map_err(|e| {
-                    eprintln!("Error fetching new historical snapshots: {}", e);
+                    error!("Failed to fetch historical snapshots after insert: {}", e);
                     e
                 })
         })).await
     }).await
 }
 
-pub async fn get_historical_snapshot(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str, xchange: &str) -> Result<Vec<HistoricalSnapshot>, Error> {
+pub async fn get_historical_snapshot(pool: Arc<deadpool::Pool<AsyncPgConnection>>, sym: &str, xchange: &str) -> Result<Vec<HistoricalSnapshot>, Error> {
+    if sym.is_empty() || sym.len() > 50 {
+        warn!("Invalid symbol length: {} characters", sym.len());
+        return Err(Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new("Symbol must be between 1 and 50 characters".to_string())
+        ));
+    }
+    
+    if xchange.is_empty() || xchange.len() > 50 {
+        warn!("Invalid exchange length: {} characters", xchange.len());
+        return Err(Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new("Exchange must be between 1 and 50 characters".to_string())
+        ));
+    }
+    
     use crate::schema::historical_snapshot::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -70,7 +104,7 @@ pub async fn get_historical_snapshot(pool: Arc<Pool<CustomAsyncPgConnectionManag
             .load(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error fetching historical snapshots: {}", e);
+                error!("Failed to fetch historical snapshots for symbol {} on exchange {}: {}", sym, xchange, e);
                 e
             })
     }).await
@@ -79,7 +113,7 @@ pub async fn get_historical_snapshot(pool: Arc<Pool<CustomAsyncPgConnectionManag
 /// Get historical snapshots with randomized sequence for Monte Carlo simulation
 /// This function shuffles snapshots within time windows while preserving market structure
 pub async fn get_randomized_historical_snapshots(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>, 
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>, 
     sym: &str, 
     xchange: &str,
     window_minutes: i32,  // Time window for shuffling (e.g., 30 minutes)
@@ -136,7 +170,7 @@ pub async fn get_randomized_historical_snapshots(
 /// Bootstrap sample historical snapshots for Monte Carlo simulation
 /// Creates a new sequence by sampling with replacement from historical data
 pub async fn get_bootstrap_historical_snapshots(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>,
     sym: &str,
     xchange: &str,
     sample_size: usize,  // Number of snapshots to sample

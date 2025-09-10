@@ -7,6 +7,9 @@ pub mod open_buy_order_ops;
 pub mod open_sell_order_ops;
 pub mod order_book_ops;
 pub mod securities_ops;
-pub mod strategy_ops;
-pub mod strategy_order_ops;
+pub mod sim_open_buy_order_ops;
+pub mod sim_open_sell_order_ops;
+pub mod sim_trade_ops;
+pub mod strategy_ops; // Re-enabled - strategy tables now in schema
+pub mod strategy_order_ops; // Re-enabled after fixing model/schema mismatches
 pub mod trades_ops;

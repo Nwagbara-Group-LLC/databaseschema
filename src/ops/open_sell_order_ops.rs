@@ -1,14 +1,24 @@
-use crate::{get_timescale_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::open_sell_order::{NewOpenSellOrder, OpenSellOrder}};
 use bigdecimal::BigDecimal;
-use deadpool::managed::Pool;
+use diesel_async::pooled_connection::deadpool;
+use diesel_async::AsyncPgConnection;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel::QueryDsl;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
+use tracing::{debug, warn, info, error};
 use std::{collections::BTreeMap, sync::Arc};
 
-pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, order: NewOpenSellOrder) -> Result<OpenSellOrder, Error> {
-    println!("Creating open sell order: {:?}", order);
+pub async fn create_open_sell_order(pool: Arc<deadpool::Pool<AsyncPgConnection>>, order: NewOpenSellOrder) -> Result<OpenSellOrder, Error> {
+    if order.unique_id.is_empty() || order.unique_id.len() > 255 {
+        warn!("Invalid unique_id length: {} characters", order.unique_id.len());
+        return Err(Error::DatabaseError(
+            diesel::result::DatabaseErrorKind::Unknown,
+            Box::new("Unique ID must be between 1 and 255 characters".to_string())
+        ));
+    }
+    
+    debug!("Creating open sell order: unique_id={}", order.unique_id);
     use crate::schema::open_sell_orders::dsl::*;
     
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -29,7 +39,7 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         match result {
             Ok(_) => {},
             Err(e) => {
-                eprintln!("Error saving new open sell order: {}", e);
+                error!("Database error saving new open sell order: {}", e);
             }
         }
 
@@ -38,14 +48,14 @@ pub async fn create_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
             .first(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error fetching new open sell order: {}", e);
+                error!("Database error fetching new open sell order: {}", e);
                 e
             })
     }).await
 }
 
-pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewOpenSellOrder>) -> Result<Vec<OpenSellOrder>, Error> {
-    println!("Creating {} open sell orders", orders.len());
+pub async fn create_open_sell_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orders: Vec<NewOpenSellOrder>) -> Result<Vec<OpenSellOrder>, Error> {
+    info!("Creating {} open sell orders", orders.len());
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -79,15 +89,15 @@ pub async fn create_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
                 .load::<OpenSellOrder>(conn)
                 .await
                 .map_err(|e| {
-                    eprintln!("Error fetching created sell orders: {}", e);
+                    error!("Database error fetching created sell orders: {}", e);
                     e
                 })
         })).await
     }).await
 }
 
-pub async fn modify_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str, new_price_level: &BigDecimal, new_sell_quantity: &BigDecimal) -> Result<OpenSellOrder, Error> {
-    println!("Modifying open sell order: {:?}", id);
+pub async fn modify_open_sell_order(pool: Arc<deadpool::Pool<AsyncPgConnection>>, id: &str, new_price_level: &BigDecimal, new_sell_quantity: &BigDecimal) -> Result<OpenSellOrder, Error> {
+    info!("Modifying open sell order: {}", id);
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -101,17 +111,17 @@ pub async fn modify_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         .get_result(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error modifying open sell order: {}", e);
+            error!("Database error modifying open sell order {}: {}", id, e);
             e
         })
     }).await
 }
 
 pub async fn modify_open_sell_orders(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>,
     updates: Vec<(&String, &BigDecimal, &BigDecimal)>,
 ) -> Result<Vec<OpenSellOrder>, Error> {
-    println!("Modifying {} open sell orders", updates.len());
+    info!("Modifying {} open sell orders", updates.len());
     if updates.is_empty() {
         return Ok(vec![]);
     }
@@ -145,7 +155,7 @@ pub async fn modify_open_sell_orders(
                         .get_result::<OpenSellOrder>(conn)
                         .await
                         .map_err(|e| {
-                            eprintln!("Error modifying sell order {}: {}", id, e);
+                            error!("Database error modifying sell order {}: {}", id, e);
                             e
                         })?;
                     chunk_results.push(result);
@@ -160,8 +170,8 @@ pub async fn modify_open_sell_orders(
     }).await
 }
 
-pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, id: &str) -> Result<usize, Error> {
-    println!("Deleting open sell order");
+pub async fn delete_open_sell_order(pool: Arc<deadpool::Pool<AsyncPgConnection>>, id: &str) -> Result<usize, Error> {
+    info!("Deleting open sell order");
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -174,15 +184,15 @@ pub async fn delete_open_sell_order(pool: Arc<Pool<CustomAsyncPgConnectionManage
         .execute(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error deleting open sell order: {}", e);
+            error!("Database error deleting open sell order: {}", e);
             e
         })
     })
         .await
 }
 
-pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, ids: &[String]) -> Result<usize, Error> {
-    println!("Deleting {} open sell orders", ids.len());
+pub async fn delete_open_sell_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>, ids: &[String]) -> Result<usize, Error> {
+    info!("Deleting {} open sell orders", ids.len());
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -201,7 +211,7 @@ pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
                 .execute(&mut connection)
                 .await
                 .map_err(|e| {
-                    eprintln!("Error deleting sell orders batch: {}", e);
+                    error!("Database error deleting sell orders batch: {}", e);
                     e
                 })?;
             total_deleted += deleted;
@@ -211,8 +221,8 @@ pub async fn delete_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManag
     }).await
 }
 
-pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<BTreeMap<BigDecimal, Vec<OpenSellOrder>>, Error> {
-    println!("Getting open sell orders");
+pub async fn get_open_sell_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>) -> Result<BTreeMap<BigDecimal, Vec<OpenSellOrder>>, Error> {
+    info!("Getting open sell orders");
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -226,7 +236,7 @@ pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>
         .load::<OpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading open sell orders: {}", e);
+            error!("Database error loading open sell orders: {}", e);
             e
         })
     }).await?;
@@ -245,8 +255,8 @@ pub async fn get_open_sell_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>
     Ok(sell_orderbook)
 }
 
-pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str) -> Result<BTreeMap<BigDecimal, Vec<OpenSellOrder>>, Error> {
-    println!("Getting open sell orders");
+pub async fn get_open_sell_orders_by_symbol(pool: Arc<deadpool::Pool<AsyncPgConnection>>, sym: &str) -> Result<BTreeMap<BigDecimal, Vec<OpenSellOrder>>, Error> {
+    info!("Getting open sell orders for symbol: {}", sym);
     use crate::schema::open_sell_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -261,7 +271,7 @@ pub async fn get_open_sell_orders_by_symbol(pool: Arc<Pool<CustomAsyncPgConnecti
     .load::<OpenSellOrder>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading open sell orders: {}", e);
+            error!("Database error loading open sell orders for symbol {}: {}", sym, e);
             e
         })
     }).await?;

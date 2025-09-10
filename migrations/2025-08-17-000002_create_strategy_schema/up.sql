@@ -77,7 +77,7 @@ CREATE TABLE strategy_instances (
     
     -- Instance metadata
     is_template BOOLEAN NOT NULL DEFAULT false, -- Mark as reusable template
-    tags VARCHAR(255)[], -- Tags for categorization
+    tags TEXT[], -- Tags for categorization (TEXT[] instead of VARCHAR[] for Diesel compatibility)
     created_by VARCHAR(255),
     
     -- Optimization tracking
@@ -140,9 +140,7 @@ CREATE TABLE optimization_iterations (
     completed_at TIMESTAMPTZ,
     execution_time_ms INTEGER,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
-    error_message TEXT,
-    
-    UNIQUE(optimization_run_id, iteration_number)
+    error_message TEXT
 );
 
 -- Strategy performance comparisons
@@ -188,13 +186,14 @@ CREATE INDEX idx_optimization_runs_strategy_id ON optimization_runs(strategy_id)
 CREATE INDEX idx_optimization_runs_status ON optimization_runs(status);
 CREATE INDEX idx_optimization_runs_created_at ON optimization_runs(created_at);
 
+CREATE INDEX idx_backtest_results_strategy_instance ON backtest_results(strategy_instance_id) WHERE strategy_instance_id IS NOT NULL;
+
+-- Create indexes for optimization iterations
 CREATE INDEX idx_optimization_iterations_run_id ON optimization_iterations(optimization_run_id);
 CREATE INDEX idx_optimization_iterations_score ON optimization_iterations(objective_score) WHERE objective_score IS NOT NULL;
 
-CREATE INDEX idx_backtest_results_strategy_instance ON backtest_results(strategy_instance_id) WHERE strategy_instance_id IS NOT NULL;
-
--- Add TimescaleDB hypertable for optimization iterations (time-series data)
-SELECT create_hypertable('optimization_iterations', 'started_at', chunk_time_interval => INTERVAL '7 days');
+-- Note: TimescaleDB hypertable creation commented out to avoid index conflicts
+-- SELECT create_hypertable('optimization_iterations', 'started_at', chunk_time_interval => INTERVAL '7 days');
 
 -- Comments for documentation
 COMMENT ON TABLE strategies IS 'Master table for strategy definitions and versions';

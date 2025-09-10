@@ -21,7 +21,9 @@ pub struct NewHistoricalOrder {
     prev_quantity: Option<BigDecimal>,
     status: String,
     exchange: String,
-    symbol: String
+    symbol: String,
+    exchange_id: Uuid,
+    security_id: Uuid,
 }
 
 impl NewHistoricalOrder {
@@ -36,7 +38,9 @@ impl NewHistoricalOrder {
         prev_quantity: Option<&BigDecimal>,
         status: &str,
         exchange: &str,
-        symbol: &str
+        symbol: &str,
+        exchange_id: Uuid,
+        security_id: Uuid,
     ) -> NewHistoricalOrder {
         NewHistoricalOrder {
             timestamp,
@@ -49,7 +53,9 @@ impl NewHistoricalOrder {
             prev_quantity: prev_quantity.cloned(),
             status: status.to_string(),
             exchange: exchange.to_string(),
-            symbol: symbol.to_string()
+            symbol: symbol.to_string(),
+            exchange_id,
+            security_id,
         }
     }
 

@@ -29,7 +29,20 @@ pub struct SimTrade {
     #[diesel(sql_type = Numeric)]
     quantity: BigDecimal,
     #[diesel(sql_type = diesel::sql_types::Bool)]
-    matched_user: bool,
+    matched_trader: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Insertable)]
+#[diesel(table_name = sim_trades)]
+pub struct NewSimTrade {
+    pub backtest_id: Uuid,
+    pub trade_id: String,
+    pub symbol: String,
+    pub exchange: String,
+    pub side: String,
+    pub price: BigDecimal,
+    pub quantity: BigDecimal,
+    pub matched_trader: bool,
 }
 
 impl SimTrade {
@@ -42,7 +55,7 @@ impl SimTrade {
         side: &str,
         price: &BigDecimal,
         quantity: &BigDecimal,
-        matched_user: bool,
+        matched_trader: bool,
     ) -> SimTrade {
         SimTrade {
             created_at,
@@ -53,7 +66,7 @@ impl SimTrade {
             side: side.to_string(),
             price: price.clone(),
             quantity: quantity.clone(),
-            matched_user,
+            matched_trader,
         }
     }
 
@@ -81,7 +94,7 @@ impl SimTrade {
         &self.symbol
     }
 
-    pub fn get_matched_user(&self) -> bool {
-        self.matched_user
+    pub fn get_matched_trader(&self) -> bool {
+        self.matched_trader
     }
 }

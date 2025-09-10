@@ -1,102 +1,32 @@
 pub mod ops;
 pub mod schema;
 pub mod models;
+pub mod errors;
 
 use anyhow::Result;
-use deadpool::managed::{Manager, Metrics, Object, Pool, RecycleResult};
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool};
 use dotenv::dotenv;
-use native_tls::TlsConnector;
-use postgres_native_tls::MakeTlsConnector;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::{env, sync::Arc};
-use tokio_postgres::Config;
 
-// Define a custom connection manager for `AsyncPgConnection`
-pub struct CustomAsyncPgConnectionManager {
-    database_url: String,
-}
-
-impl CustomAsyncPgConnectionManager {
-    pub fn new(database_url: String) -> Self {
-        Self { database_url }
-    }
-
-    async fn create_timescale_connection(&self) -> Result<AsyncPgConnection> {
-        println!("Creating database connection");
-        let config = self
-            .database_url
-            .parse::<Config>()
-            .expect("Failed to parse database URL");
-
-        let tls_connector = TlsConnector::new().expect("Failed to create TLS connector");
-        let tls = MakeTlsConnector::new(tls_connector);
-
-        // Connect using tokio-postgres
-        let (client, connection) = config.connect(tls).await?;
-
-        // Spawn a background task to manage the connection's lifecycle
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                eprintln!("connection error: {}", e);
-            }
-        });
-
-        // Convert the `tokio-postgres` client to `AsyncPgConnection`
-        AsyncPgConnection::try_from(client).await.map_err(|e| anyhow::Error::from(e))
-    }
-}
-
-// Implement the Manager trait for deadpool
-impl Manager for CustomAsyncPgConnectionManager {
-    type Type = AsyncPgConnection; // Define the type for the connection
-    type Error = anyhow::Error; // Define the error type
-
-    async fn create(&self) -> Result<Self::Type> {
-        println!("Creating database connection");
-        self.create_timescale_connection().await.map_err(|e| {
-            eprintln!("Failed to create database connection: {}", e);
-            e
-        })
-    }
-
-    async fn recycle(
-        &self,
-        conn: &mut Self::Type,
-        _metrics: &Metrics,
-    ) -> RecycleResult<Self::Error> {
-        println!("Recycling database connection");
-        let query_result = diesel::sql_query("SELECT 1")
-            .execute(conn)
-            .await;
-
-        match query_result {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                eprintln!("Connection recycle failed: {}", e);
-                Err(anyhow::Error::from(e).into())
-            }
-        }
-    }
-}
-
-/// Function to create a connection pool
-pub fn create_timescale_connection_pool() -> Pool<CustomAsyncPgConnectionManager> {
+/// Function to create a connection pool using diesel-async's built-in manager
+pub fn create_timescale_connection_pool() -> deadpool::Pool<AsyncPgConnection> {
     dotenv().ok();
     println!("Creating database connection pool");
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let manager = CustomAsyncPgConnectionManager::new(database_url);
+    let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url);
 
-    Pool::builder(manager)
+    deadpool::Pool::builder(config)
         .build()
         .expect("Failed to create database pool")
 }
 
 /// Function to get a connection from the pool
 pub async fn get_timescale_connection(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
-) -> Result<Object<CustomAsyncPgConnectionManager>> {
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>,
+) -> Result<deadpool::Object<AsyncPgConnection>> {
     println!("Getting database connection from pool");
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 

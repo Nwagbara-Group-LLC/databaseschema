@@ -1,6 +1,2 @@
--- Drop continuous aggregate views for candlestick data
-DROP MATERIALIZED VIEW IF EXISTS candles_1m CASCADE;
-DROP MATERIALIZED VIEW IF EXISTS candles_5m CASCADE;
-DROP MATERIALIZED VIEW IF EXISTS candles_15m CASCADE;
-DROP MATERIALIZED VIEW IF EXISTS candles_1h CASCADE;
-DROP MATERIALIZED VIEW IF EXISTS candles_1d CASCADE;
+-- Reverse the candles table creation
+DROP TABLE IF EXISTS candles CASCADE;

@@ -1,10 +1,10 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, NaiveDate};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[derive(Debug, Clone, Queryable, Identifiable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::schema::backtest_results)]
 pub struct BacktestResult {
     pub id: Uuid,
@@ -61,9 +61,9 @@ pub struct BacktestResult {
     pub total_commission_paid: BigDecimal,
     pub avg_fill_time_seconds: Option<BigDecimal>,
     pub strategy_metrics: Option<serde_json::Value>,
-    pub strategy_instance_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub strategy_instance_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
@@ -122,6 +122,8 @@ pub struct NewBacktestResult {
     pub total_commission_paid: BigDecimal,
     pub avg_fill_time_seconds: Option<BigDecimal>,
     pub strategy_metrics: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
     pub strategy_instance_id: Option<Uuid>,
 }
 
@@ -225,4 +227,106 @@ pub struct NewBacktestDrawdownPeriod {
     pub duration_days: i32,
     pub magnitude: BigDecimal,
     pub recovery_date: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::backtest_reports)]
+pub struct BacktestReport {
+    pub id: Uuid,
+    pub backtest_result_id: Uuid,
+    pub report_id: String,
+    pub report_name: String,
+    pub strategy_name: String,
+    pub symbol: String,
+    pub timeframe: String,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub initial_capital: BigDecimal,
+    pub generated_at: DateTime<Utc>,
+    pub generated_by: Option<String>,
+    pub generation_source: String,
+    pub backtest_duration_seconds: Option<BigDecimal>,
+    pub data_points: Option<i32>,
+    pub include_trades: bool,
+    pub include_charts: bool,
+    pub export_formats: Option<Vec<Option<String>>>,
+    pub custom_css: Option<String>,
+    pub template_version: Option<String>,
+    pub file_paths: serde_json::Value,
+    pub file_sizes: Option<serde_json::Value>,
+    pub storage_location: String,
+    pub performance_summary: serde_json::Value,
+    pub risk_summary: serde_json::Value,
+    pub trade_summary: serde_json::Value,
+    pub status: String,
+    pub error_message: Option<String>,
+    pub tags: Option<Vec<Option<String>>>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub accessed_at: Option<DateTime<Utc>>,
+    pub access_count: i32,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::backtest_reports)]
+pub struct NewBacktestReport {
+    pub backtest_result_id: Uuid,
+    pub report_id: String,
+    pub report_name: String,
+    pub strategy_name: String,
+    pub symbol: String,
+    pub timeframe: String,
+    pub start_date: NaiveDate,
+    pub end_date: NaiveDate,
+    pub initial_capital: BigDecimal,
+    pub generated_by: Option<String>,
+    pub generation_source: String,
+    pub backtest_duration_seconds: Option<BigDecimal>,
+    pub data_points: Option<i32>,
+    pub include_trades: bool,
+    pub include_charts: bool,
+    pub export_formats: Option<Vec<Option<String>>>,
+    pub custom_css: Option<String>,
+    pub template_version: Option<String>,
+    pub file_paths: serde_json::Value,
+    pub file_sizes: Option<serde_json::Value>,
+    pub storage_location: String,
+    pub performance_summary: serde_json::Value,
+    pub risk_summary: serde_json::Value,
+    pub trade_summary: serde_json::Value,
+    pub status: String,
+    pub error_message: Option<String>,
+    pub tags: Option<Vec<Option<String>>>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Queryable, Identifiable, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::backtest_report_access_log)]
+pub struct BacktestReportAccessLog {
+    pub id: Uuid,
+    pub report_id: Uuid,
+    pub accessed_by: Option<String>,
+    pub access_method: String,
+    pub format_requested: Option<String>,
+    pub user_agent: Option<String>,
+    pub ip_address: Option<String>,
+    pub response_time_ms: Option<i32>,
+    pub success: bool,
+    pub error_message: Option<String>,
+    pub accessed_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Insertable, Serialize, Deserialize)]
+#[diesel(table_name = crate::schema::backtest_report_access_log)]
+pub struct NewBacktestReportAccessLog {
+    pub report_id: Uuid,
+    pub accessed_by: Option<String>,
+    pub access_method: String,
+    pub format_requested: Option<String>,
+    pub user_agent: Option<String>,
+    pub ip_address: Option<String>,
+    pub response_time_ms: Option<i32>,
+    pub success: bool,
+    pub error_message: Option<String>,
 }

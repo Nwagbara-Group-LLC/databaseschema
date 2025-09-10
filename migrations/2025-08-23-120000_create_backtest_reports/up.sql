@@ -68,7 +68,7 @@ CREATE TABLE backtest_report_access_log (
     access_method VARCHAR(50) NOT NULL, -- 'download', 'view', 'api', 'dashboard'
     format_requested VARCHAR(20), -- 'html', 'json', 'csv', 'pdf'
     user_agent TEXT, -- Browser/client information
-    ip_address INET, -- Client IP
+    ip_address TEXT, -- Client IP address as text
     response_time_ms INTEGER, -- Time to serve the report
     success BOOLEAN NOT NULL DEFAULT true,
     error_message TEXT, -- If not successful

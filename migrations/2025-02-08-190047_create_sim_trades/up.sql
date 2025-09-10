@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS sim_trades (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     symbol VARCHAR(7) NOT NULL REFERENCES securities (symbol),
     exchange VARCHAR(8) NOT NULL REFERENCES exchanges (exchange),
-    trade_id TEXT DEFAULT NOT NULL,
+    trade_id TEXT NOT NULL,
     side VARCHAR(4) NOT NULL,
     price NUMERIC NOT NULL,
     quantity NUMERIC NOT NULL,

@@ -12,7 +12,16 @@ CREATE TABLE IF NOT EXISTS open_buy_orders (
     PRIMARY KEY (created_at, unique_id)
 );
 
-SELECT create_hypertable('open_buy_orders', 'created_at', chunk_time_interval => interval '1 millisecond');
+-- Create hypertable only if it doesn't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM timescaledb_information.hypertables 
+        WHERE hypertable_name = 'open_buy_orders'
+    ) THEN
+        PERFORM create_hypertable('open_buy_orders', 'created_at', chunk_time_interval => interval '1 millisecond');
+    END IF;
+END $$;
 
 ALTER TABLE open_buy_orders SET (
     timescaledb.compress,

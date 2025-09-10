@@ -1,13 +1,17 @@
-use crate::{get_timescale_connection, models::historical_order::{HistoricalOrder, NewHistoricalOrder}, CustomAsyncPgConnectionManager};
-use deadpool::managed::Pool;
+use crate::{get_timescale_connection, models::historical_order::{HistoricalOrder, NewHistoricalOrder}};
+use diesel_async::pooled_connection::deadpool;
+use diesel_async::AsyncPgConnection;
 use diesel::{prelude::*, result::Error, upsert::excluded};
 use diesel_async::AsyncConnection;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
+use tracing::{info, error, warn, debug};
+use std::time::Instant;
 
-pub async fn create_historical_order(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, historical_order: NewHistoricalOrder) -> Result<HistoricalOrder, Error> {
-    println!("Creating historical order: {:?}", historical_order);
+pub async fn create_historical_order(pool: Arc<deadpool::Pool<AsyncPgConnection>>, historical_order: NewHistoricalOrder) -> Result<HistoricalOrder, Error> {
+    let start_time = Instant::now();
+    debug!("Creating historical order: {:?}", historical_order);
     use crate::schema::historical_orders::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -15,7 +19,14 @@ pub async fn create_historical_order(pool: Arc<Pool<CustomAsyncPgConnectionManag
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
             .await
-            .expect("Error connecting to database");
+            .map_err(|e| {
+                error!("Failed to get database connection: {}", e);
+                Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                    Box::new(e.to_string())
+                )
+            })?;
+            
         diesel::insert_into(historical_orders)
             .values(&historical_order)
             .on_conflict(event_id)
@@ -24,94 +35,153 @@ pub async fn create_historical_order(pool: Arc<Pool<CustomAsyncPgConnectionManag
             .execute(&mut connection)
             .await?;
 
-        historical_orders
+        let result = historical_orders
             .filter(order_id.eq(&historical_order.get_order_id()))
             .first(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error fetching new historical order: {}", e);
+                error!("Error fetching new historical order: {}", e);
                 e
-            })
+            })?;
+            
+        debug!("Historical order created in {}ms", start_time.elapsed().as_millis());
+        Ok(result)
     }).await
 }
 
-pub async fn create_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orders: Vec<NewHistoricalOrder>) -> Result<Vec<HistoricalOrder>, Error> {
-    println!("Creating {} historical orders", orders.len());
+pub async fn create_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orders: Vec<NewHistoricalOrder>) -> Result<Vec<HistoricalOrder>, Error> {
+    let start_time = Instant::now();
+    info!("Creating {} historical orders", orders.len());
     use crate::schema::historical_orders::dsl::*;
+
+    // Security: Validate batch size to prevent resource exhaustion
+    const MAX_BATCH_SIZE: usize = 10000;
+    if orders.len() > MAX_BATCH_SIZE {
+        error!("Batch size {} exceeds maximum {}", orders.len(), MAX_BATCH_SIZE);
+        return Err(Error::RollbackTransaction);
+    }
+
+    if orders.is_empty() {
+        warn!("create_historical_orders called with empty orders vector");
+        return Ok(Vec::new());
+    }
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
             .await
-            .expect("Error connecting to database");
+            .map_err(|e| {
+                error!("Failed to get database connection: {}", e);
+                Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                    Box::new(e.to_string())
+                )
+            })?;
 
         // Use transaction for atomicity
-        connection.transaction::<_, Error, _>(|conn| Box::pin(async {
-            // Batch insert with conflict resolution
-            diesel::insert_into(historical_orders)
-                .values(&orders)
-                .on_conflict(event_id)
-                .do_update()
-                .set((
-                    event_id.eq(excluded(event_id)),
-                    timestamp.eq(excluded(timestamp)),
-                    order_id.eq(excluded(order_id)),
-                    event_type.eq(excluded(event_type)),
-                    side.eq(excluded(side)),
-                    price_level.eq(excluded(price_level)),
-                    quantity.eq(excluded(quantity)),
-                    prev_price.eq(excluded(prev_price)),
-                    prev_quantity.eq(excluded(prev_quantity)),
-                    status.eq(excluded(status)),
-                    exchange.eq(excluded(exchange)),
-                    symbol.eq(excluded(symbol)),
-                ))
-                .execute(conn)
-                .await?;
+        let result = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+            // Process in chunks for better performance
+            const CHUNK_SIZE: usize = 1000;
+            let mut all_results = Vec::new();
+            
+            for chunk in orders.chunks(CHUNK_SIZE) {
+                // Batch insert with conflict resolution
+                diesel::insert_into(historical_orders)
+                    .values(chunk)
+                    .on_conflict(event_id)
+                    .do_update()
+                    .set((
+                        event_id.eq(excluded(event_id)),
+                        timestamp.eq(excluded(timestamp)),
+                        order_id.eq(excluded(order_id)),
+                        event_type.eq(excluded(event_type)),
+                        side.eq(excluded(side)),
+                        price_level.eq(excluded(price_level)),
+                        quantity.eq(excluded(quantity)),
+                        prev_price.eq(excluded(prev_price)),
+                        prev_quantity.eq(excluded(prev_quantity)),
+                        status.eq(excluded(status)),
+                        exchange.eq(excluded(exchange)),
+                        symbol.eq(excluded(symbol)),
+                    ))
+                    .execute(conn)
+                    .await?;
 
-            // Fetch the inserted/updated records
-            let order_ids: Vec<String> = orders.iter()
-                .map(|order| order.get_order_id())
-                .collect();
-                
-            historical_orders
-                .filter(order_id.eq_any(&order_ids))
-                .load::<HistoricalOrder>(conn)
-                .await
-                .map_err(|e| {
-                    eprintln!("Error fetching new historical orders: {}", e);
-                    e
-                })
-        })).await
+                // Fetch the inserted/updated records for this chunk
+                let chunk_order_ids: Vec<String> = chunk.iter()
+                    .map(|order| order.get_order_id())
+                    .collect();
+                    
+                let chunk_results = historical_orders
+                    .filter(order_id.eq_any(&chunk_order_ids))
+                    .load::<HistoricalOrder>(conn)
+                    .await
+                    .map_err(|e| {
+                        error!("Error fetching historical orders chunk: {}", e);
+                        e
+                    })?;
+                    
+                all_results.extend(chunk_results);
+            }
+            
+            Ok(all_results)
+        })).await?;
+        
+        info!("Created {} historical orders in {}ms", result.len(), start_time.elapsed().as_millis());
+        Ok(result)
     }).await
 }
 
-pub async fn get_historical_orders(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, sym: &str, xchange: &str) -> Result<Vec<HistoricalOrder>, Error> {
+pub async fn get_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>, sym: &str, xchange: &str) -> Result<Vec<HistoricalOrder>, Error> {
+    let start_time = Instant::now();
+    info!("Getting historical orders for symbol: {} on exchange: {}", sym, xchange);
     use crate::schema::historical_orders::dsl::*;
+
+    // Security: Input validation
+    if sym.is_empty() || sym.len() > 20 {
+        error!("Invalid symbol length: {}", sym.len());
+        return Err(Error::RollbackTransaction);
+    }
+    
+    if xchange.is_empty() || xchange.len() > 50 {
+        error!("Invalid exchange length: {}", xchange.len());
+        return Err(Error::RollbackTransaction);
+    }
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
             .await
-            .expect("Error connecting to database");
-        historical_orders
+            .map_err(|e| {
+                error!("Failed to get database connection: {}", e);
+                Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                    Box::new(e.to_string())
+                )
+            })?;
+            
+        let result = historical_orders
             .filter((symbol.eq(sym)).and(exchange.eq(xchange)))
             .order(timestamp.asc())
+            .limit(100000) // Prevent memory exhaustion
             .load(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error fetching historical orders: {}", e);
+                error!("Error fetching historical orders: {}", e);
                 e
-            })
+            })?;
+            
+        info!("Fetched {} historical orders in {}ms", result.len(), start_time.elapsed().as_millis());
+        Ok(result)
     }).await
 }
 
 /// Get historical orders with randomized sequence for Monte Carlo simulation
 /// This function shuffles orders within time windows while preserving market structure
 pub async fn get_randomized_historical_orders(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>, 
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>, 
     sym: &str, 
     xchange: &str,
     window_minutes: i32,  // Time window for shuffling (e.g., 30 minutes)
@@ -168,7 +238,7 @@ pub async fn get_randomized_historical_orders(
 /// Bootstrap sample historical orders for Monte Carlo simulation
 /// Creates a new sequence by sampling with replacement from historical data
 pub async fn get_bootstrap_historical_orders(
-    pool: Arc<Pool<CustomAsyncPgConnectionManager>>,
+    pool: Arc<deadpool::Pool<AsyncPgConnection>>,
     sym: &str,
     xchange: &str,
     sample_size: usize,  // Number of orders to sample

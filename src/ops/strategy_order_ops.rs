@@ -5,6 +5,9 @@ use chrono::Utc;
 use diesel::prelude::*;
 use diesel_async::{AsyncPgConnection, AsyncConnection, RunQueryDsl};
 use uuid::Uuid;
+use tracing::{info, error, warn, debug};
+use std::time::Instant;
+use bigdecimal::BigDecimal;
 
 /// Strategy Order Operations
 pub struct StrategyOrderOps;
@@ -15,10 +18,34 @@ impl StrategyOrderOps {
         conn: &mut AsyncPgConnection,
         order: NewStrategyOrder,
     ) -> Result<StrategyOrder> {
+        let start_time = Instant::now();
+        
+        // Input validation
+        if order.unique_id.is_empty() {
+            error!("Order creation failed: empty unique_id");
+            return Err(anyhow::anyhow!("unique_id cannot be empty"));
+        }
+        
+        if order.symbol.is_empty() || order.symbol.len() > 20 {
+            error!("Order creation failed: invalid symbol length");
+            return Err(anyhow::anyhow!("symbol must be 1-20 characters"));
+        }
+        
+        if order.original_quantity <= BigDecimal::from(0) {
+            error!("Order creation failed: invalid quantity");
+            return Err(anyhow::anyhow!("quantity must be positive"));
+        }
+
         let inserted_order = diesel::insert_into(schema::strategy_orders::table)
             .values(&order)
             .get_result(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error creating order: {}", e);
+                anyhow::anyhow!("Failed to create order")
+            })?;
+            
+        debug!("Order created in {}ms", start_time.elapsed().as_millis());
         Ok(inserted_order)
     }
 
@@ -29,9 +56,14 @@ impl StrategyOrderOps {
     ) -> Result<Option<StrategyOrder>> {
         let order = schema::strategy_orders::table
             .filter(schema::strategy_orders::id.eq(order_id))
+            .select(StrategyOrder::as_select())
             .first::<StrategyOrder>(conn)
             .await
-            .optional()?;
+            .optional()
+            .map_err(|e| {
+                error!("Database error fetching order by id: {}", e);
+                anyhow::anyhow!("Failed to fetch order")
+            })?;
         Ok(order)
     }
 
@@ -40,11 +72,21 @@ impl StrategyOrderOps {
         conn: &mut AsyncPgConnection,
         unique_order_id: String,
     ) -> Result<Option<StrategyOrder>> {
+        if unique_order_id.is_empty() {
+            error!("get_order_by_unique_id called with empty unique_id");
+            return Err(anyhow::anyhow!("unique_id cannot be empty"));
+        }
+        
         let order = schema::strategy_orders::table
             .filter(schema::strategy_orders::unique_id.eq(unique_order_id))
+            .select(StrategyOrder::as_select())
             .first::<StrategyOrder>(conn)
             .await
-            .optional()?;
+            .optional()
+            .map_err(|e| {
+                error!("Database error fetching order by unique_id: {}", e);
+                anyhow::anyhow!("Failed to fetch order")
+            })?;
         Ok(order)
     }
 
@@ -53,11 +95,21 @@ impl StrategyOrderOps {
         conn: &mut AsyncPgConnection,
         strategy_instance_id: Uuid,
     ) -> Result<Vec<StrategyOrder>> {
+        let start_time = Instant::now();
+        
         let orders = schema::strategy_orders::table
             .filter(schema::strategy_orders::strategy_instance_id.eq(Some(strategy_instance_id)))
             .order(schema::strategy_orders::order_created_at.desc())
+            .limit(10000) // Prevent memory exhaustion
+            .select(StrategyOrder::as_select())
             .load::<StrategyOrder>(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error fetching orders by strategy instance: {}", e);
+                anyhow::anyhow!("Failed to fetch orders")
+            })?;
+            
+        debug!("Fetched {} orders in {}ms", orders.len(), start_time.elapsed().as_millis());
         Ok(orders)
     }
 
@@ -67,16 +119,38 @@ impl StrategyOrderOps {
         order_status: OrderStatus,
         limit: Option<i64>,
     ) -> Result<Vec<StrategyOrder>> {
-        let mut query = schema::strategy_orders::table
+        let start_time = Instant::now();
+        
+        // Validate limit to prevent memory exhaustion
+        const MAX_LIMIT: i64 = 10000;
+        let safe_limit = match limit {
+            Some(l) if l > MAX_LIMIT => {
+                warn!("Limit {} exceeds maximum {}, using maximum", l, MAX_LIMIT);
+                MAX_LIMIT
+            },
+            Some(l) if l <= 0 => {
+                error!("Invalid limit: {}", l);
+                return Err(anyhow::anyhow!("limit must be positive"));
+            },
+            Some(l) => l,
+            None => 1000, // Default reasonable limit
+        };
+
+        let query = schema::strategy_orders::table
             .filter(schema::strategy_orders::status.eq(order_status))
             .order(schema::strategy_orders::order_created_at.desc())
+            .limit(safe_limit)
+            .select(StrategyOrder::as_select())
             .into_boxed();
 
-        if let Some(limit_val) = limit {
-            query = query.limit(limit_val);
-        }
-
-        let orders = query.load::<StrategyOrder>(conn).await?;
+        let orders = query.load::<StrategyOrder>(conn)
+            .await
+            .map_err(|e| {
+                error!("Database error fetching orders by status: {}", e);
+                anyhow::anyhow!("Failed to fetch orders")
+            })?;
+            
+        info!("Fetched {} orders in {}ms", orders.len(), start_time.elapsed().as_millis());
         Ok(orders)
     }
 
@@ -86,14 +160,21 @@ impl StrategyOrderOps {
         order_id: Uuid,
         new_status: OrderStatus,
     ) -> Result<StrategyOrder> {
+        let start_time = Instant::now();
+        
         let updated_order = diesel::update(schema::strategy_orders::table.filter(schema::strategy_orders::id.eq(order_id)))
             .set((
                 schema::strategy_orders::status.eq(new_status),
                 schema::strategy_orders::updated_at.eq(Utc::now()),
             ))
             .get_result(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error updating order status: {}", e);
+                anyhow::anyhow!("Failed to update order")
+            })?;
             
+        debug!("Order status updated in {}ms", start_time.elapsed().as_millis());
         Ok(updated_order)
     }
 
@@ -103,6 +184,13 @@ impl StrategyOrderOps {
         order_id: Uuid,
         cancellation_reason: String,
     ) -> Result<StrategyOrder> {
+        let start_time = Instant::now();
+        
+        if cancellation_reason.is_empty() {
+            error!("Cancel order called with empty cancellation reason");
+            return Err(anyhow::anyhow!("cancellation_reason cannot be empty"));
+        }
+        
         let updated_order = diesel::update(schema::strategy_orders::table.filter(schema::strategy_orders::id.eq(order_id)))
             .set((
                 schema::strategy_orders::status.eq(OrderStatus::Cancelled),
@@ -111,8 +199,13 @@ impl StrategyOrderOps {
                 schema::strategy_orders::updated_at.eq(Utc::now()),
             ))
             .get_result(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error cancelling order: {}", e);
+                anyhow::anyhow!("Failed to cancel order")
+            })?;
             
+        debug!("Order cancelled in {}ms", start_time.elapsed().as_millis());
         Ok(updated_order)
     }
 }
@@ -126,10 +219,29 @@ impl StrategyOrderFillOps {
         conn: &mut AsyncPgConnection,
         fill: NewStrategyOrderFill,
     ) -> Result<StrategyOrderFill> {
+        let start_time = Instant::now();
+        
+        // Input validation
+        if fill.quantity <= BigDecimal::from(0) {
+            error!("Create fill failed: invalid quantity");
+            return Err(anyhow::anyhow!("fill quantity must be positive"));
+        }
+        
+        if fill.price <= BigDecimal::from(0) {
+            error!("Create fill failed: invalid price");
+            return Err(anyhow::anyhow!("fill price must be positive"));
+        }
+        
         let inserted_fill = diesel::insert_into(schema::strategy_order_fills::table)
             .values(&fill)
             .get_result(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error creating fill: {}", e);
+                anyhow::anyhow!("Failed to create fill")
+            })?;
+            
+        debug!("Fill created in {}ms", start_time.elapsed().as_millis());
         Ok(inserted_fill)
     }
 
@@ -138,11 +250,20 @@ impl StrategyOrderFillOps {
         conn: &mut AsyncPgConnection,
         order_id: Uuid,
     ) -> Result<Vec<StrategyOrderFill>> {
+        let start_time = Instant::now();
+        
         let fills = schema::strategy_order_fills::table
             .filter(schema::strategy_order_fills::order_id.eq(order_id))
             .order(schema::strategy_order_fills::fill_timestamp.asc())
+            .limit(1000) // Prevent memory exhaustion
             .load::<StrategyOrderFill>(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error fetching fills: {}", e);
+                anyhow::anyhow!("Failed to fetch fills")
+            })?;
+            
+        debug!("Fetched {} fills in {}ms", fills.len(), start_time.elapsed().as_millis());
         Ok(fills)
     }
 }
@@ -156,10 +277,18 @@ impl StrategyOrderStateChangeOps {
         conn: &mut AsyncPgConnection,
         state_change: NewStrategyOrderStateChange,
     ) -> Result<StrategyOrderStateChange> {
+        let start_time = Instant::now();
+        
         let inserted_change = diesel::insert_into(schema::strategy_order_state_changes::table)
             .values(&state_change)
             .get_result(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error creating state change: {}", e);
+                anyhow::anyhow!("Failed to create state change")
+            })?;
+            
+        debug!("State change created in {}ms", start_time.elapsed().as_millis());
         Ok(inserted_change)
     }
 
@@ -168,11 +297,20 @@ impl StrategyOrderStateChangeOps {
         conn: &mut AsyncPgConnection,
         order_id: Uuid,
     ) -> Result<Vec<StrategyOrderStateChange>> {
+        let start_time = Instant::now();
+        
         let changes = schema::strategy_order_state_changes::table
             .filter(schema::strategy_order_state_changes::order_id.eq(order_id))
             .order(schema::strategy_order_state_changes::changed_at.asc())
+            .limit(1000) // Prevent memory exhaustion
             .load::<StrategyOrderStateChange>(conn)
-            .await?;
+            .await
+            .map_err(|e| {
+                error!("Database error fetching state changes: {}", e);
+                anyhow::anyhow!("Failed to fetch state changes")
+            })?;
+            
+        debug!("Fetched {} state changes in {}ms", changes.len(), start_time.elapsed().as_millis());
         Ok(changes)
     }
 }
@@ -187,7 +325,9 @@ impl StrategyOrderWorkflow {
         order: NewStrategyOrder,
         created_by: Option<String>,
     ) -> Result<(StrategyOrder, StrategyOrderStateChange)> {
-        conn.transaction::<_, anyhow::Error, _>(|conn| Box::pin(async move {
+        let start_time = Instant::now();
+        
+        let result = conn.transaction::<_, anyhow::Error, _>(|conn| Box::pin(async move {
             // Create the order
             let created_order = StrategyOrderOps::create_order(conn, order).await?;
             
@@ -208,6 +348,9 @@ impl StrategyOrderWorkflow {
             let state_change = StrategyOrderStateChangeOps::create_state_change(conn, initial_state).await?;
             
             Ok((created_order, state_change))
-        })).await
+        })).await?;
+        
+        info!("Order with state created in {}ms", start_time.elapsed().as_millis());
+        Ok(result)
     }
 }

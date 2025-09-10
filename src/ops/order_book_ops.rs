@@ -1,14 +1,18 @@
 use std::sync::Arc;
-use crate::{get_timescale_connection, models::order_book::{NewOrderBook, OrderBook}, CustomAsyncPgConnectionManager};
+use crate::{get_timescale_connection, models::order_book::{NewOrderBook, OrderBook}};
 use bigdecimal::BigDecimal;
-use deadpool::managed::Pool;
+use diesel_async::pooled_connection::deadpool;
+use diesel_async::AsyncPgConnection;
 use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use uuid::Uuid;
+use tracing::{info, error, debug};
+use std::time::Instant;
 
-pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
-    println!("Creating orderbook: {:?}", orderbook);
+pub async fn create_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
+    let start_time = Instant::now();
+    debug!("Creating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -16,7 +20,14 @@ pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
-        .expect("Error connecting to database");
+        .map_err(|e| {
+            error!("Failed to get database connection: {}", e);
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string())
+            )
+        })?;
+        
     diesel::insert_into(order_books)
         .values(&orderbook)
         .on_conflict(order_book_id)
@@ -25,20 +36,24 @@ pub async fn create_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
         .execute(&mut connection)
         .await?;
 
-    order_books
+    let result = order_books
         .filter(security_id.eq(&orderbook.security_id))
         .first(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error fetching new orderbook: {}", e);
+            error!("Error fetching new orderbook: {}", e);
             e
-        })
+        })?;
+        
+    debug!("Orderbook created in {}ms", start_time.elapsed().as_millis());
+    Ok(result)
     })
         .await
 }
 
-pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> Result<Vec<OrderBook>, Error> {
-    println!("Getting orderbooks");
+pub async fn get_orderbooks(pool: Arc<deadpool::Pool<AsyncPgConnection>>) -> Result<Vec<OrderBook>, Error> {
+    let start_time = Instant::now();
+    info!("Getting all orderbooks");
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -46,19 +61,31 @@ pub async fn get_orderbooks(pool: Arc<Pool<CustomAsyncPgConnectionManager>>) -> 
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
-        .expect("Error connecting to database");
-    order_books
+        .map_err(|e| {
+            error!("Failed to get database connection: {}", e);
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string())
+            )
+        })?;
+        
+    let result = order_books
+        .limit(10000) // Prevent memory exhaustion
         .load::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading orderbooks: {}", e);
+            error!("Error loading orderbooks: {}", e);
             e
-        })
+        })?;
+        
+    info!("Fetched {} orderbooks in {}ms", result.len(), start_time.elapsed().as_millis());
+    Ok(result)
     }).await
 }
 
-pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, orderbook: OrderBook, volume: BigDecimal) -> Result<OrderBook, Error> {
-    println!("Updating orderbook: {:?}", orderbook);
+pub async fn update_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orderbook: OrderBook, volume: BigDecimal) -> Result<OrderBook, Error> {
+    let start_time = Instant::now();
+    debug!("Updating orderbook: {:?}", orderbook);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -66,21 +93,32 @@ pub async fn update_orderbook(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
             .await
-            .expect("Error connecting to database");
-        diesel::update(order_books.find(orderbook.order_book_id))
+            .map_err(|e| {
+                error!("Failed to get database connection: {}", e);
+                Error::DatabaseError(
+                    diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                    Box::new(e.to_string())
+                )
+            })?;
+            
+        let result = diesel::update(order_books.find(orderbook.order_book_id))
             .set(total_volume.eq(volume.clone()))
             .get_result(&mut connection)
             .await
             .map_err(|e| {
-                eprintln!("Error updating orderbook: {}", e);
+                error!("Error updating orderbook: {}", e);
                 e
-            })
+            })?;
+            
+        debug!("Orderbook updated in {}ms", start_time.elapsed().as_millis());
+        Ok(result)
     })
     .await
 }
 
-pub async fn get_orderbook_by_orderbook_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, o_id: Uuid) -> Result<OrderBook, Error> {
-    println!("Getting orderbook by symbol");
+pub async fn get_orderbook_by_orderbook_id(pool: Arc<deadpool::Pool<AsyncPgConnection>>, o_id: Uuid) -> Result<OrderBook, Error> {
+    let start_time = Instant::now();
+    info!("Getting orderbook by id: {}", o_id);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -88,20 +126,31 @@ pub async fn get_orderbook_by_orderbook_id(pool: Arc<Pool<CustomAsyncPgConnectio
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
-        .expect("Error connecting to database");
-    order_books
+        .map_err(|e| {
+            error!("Failed to get database connection: {}", e);
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string())
+            )
+        })?;
+        
+    let result = order_books
         .filter(order_book_id.eq(o_id))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading orderbook: {}", e);
+            error!("Error loading orderbook: {}", e);
             e
-        })
+        })?;
+        
+    debug!("Fetched orderbook in {}ms", start_time.elapsed().as_millis());
+    Ok(result)
     }).await
 }
 
-pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
-    println!("Getting orderbook by symbol");
+pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<deadpool::Pool<AsyncPgConnection>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
+    let start_time = Instant::now();
+    info!("Getting orderbook by exchange_id: {} and security_id: {}", e_id, s_id);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -109,35 +158,56 @@ pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<Pool<CustomA
     Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
-        .expect("Error connecting to database");
-    order_books
+        .map_err(|e| {
+            error!("Failed to get database connection: {}", e);
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string())
+            )
+        })?;
+        
+    let result = order_books
         .filter(exchange_id.eq(e_id).and(security_id.eq(s_id)))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading orderbook: {}", e);
+            error!("Error loading orderbook: {}", e);
             e
-        })
+        })?;
+        
+    debug!("Fetched orderbook in {}ms", start_time.elapsed().as_millis());
+    Ok(result)
     }).await
 }
 
-pub async fn orderbook_exists(pool: Arc<Pool<CustomAsyncPgConnectionManager>>, s_id: Uuid) -> bool {
-    println!("Checking if orderbook exists: {}", s_id);
+pub async fn orderbook_exists(pool: Arc<deadpool::Pool<AsyncPgConnection>>, s_id: Uuid) -> bool {
+    let start_time = Instant::now();
+    info!("Checking if orderbook exists for security_id: {}", s_id);
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
-        .expect("Error connecting to database");
+        .map_err(|e| {
+            error!("Failed to get database connection: {}", e);
+            Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UnableToSendCommand,
+                Box::new(e.to_string())
+            )
+        })?;
+        
     order_books
         .filter(security_id.eq(s_id))
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            eprintln!("Error loading orderbook: {}", e);
+            debug!("Orderbook not found or error loading: {}", e);
             e
         })
-    }).await.is_ok()
+    }).await.is_ok();
+    
+    debug!("Orderbook existence check completed in {}ms: {}", start_time.elapsed().as_millis(), result);
+    result
 }
