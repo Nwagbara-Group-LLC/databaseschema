@@ -24,4 +24,5 @@ tokio-postgres = "0.7.2"
 tokio-retry = "0.3.0"
 tracing = "0.1.40"
 thiserror = "1.0"
+ultra-logger = { path = "../LoggingEngine/ultra-logger" }
 uuid = { version = "1.10.0", features = ["serde", "v4"] }

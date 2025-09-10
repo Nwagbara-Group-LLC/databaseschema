@@ -28,28 +28,18 @@ impl NewOrderBook {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Queryable, Clone, Selectable, QueryableByName, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Queryable, Clone, Selectable, AsChangeset)]
 #[diesel(table_name = order_books)]
 #[diesel(check_for_backend(Pg))]
 pub struct OrderBook {
-    #[diesel(sql_type = Timestamptz)]
     pub created_at: DateTime<Utc>,
-    #[diesel(sql_type = Nullable<Timestamptz>)]
     pub updated_at: Option<DateTime<Utc>>,
-    #[diesel(sql_type = VarChar)]
     pub symbol: String,
-    #[diesel(sql_type = VarChar)]
     pub exchange: String,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub security_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub exchange_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub order_book_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub buy_order_book_id: Uuid,
-    #[diesel(sql_type = diesel::sql_types::Uuid)]
     pub sell_order_book_id: Uuid,
-    #[diesel(sql_type = Numeric)]
     pub total_volume: BigDecimal,
 }

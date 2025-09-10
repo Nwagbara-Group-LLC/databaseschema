@@ -6,7 +6,7 @@ use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
 use anyhow::Error;
 
-use tracing::{info, error};
+use ultra_logger::UltraLogger;
 use uuid::Uuid;
 
 use crate::models::sim_trade::{SimTrade, NewSimTrade};
@@ -30,7 +30,8 @@ pub async fn create_sim_trade(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Created simulation trade in {:?}", duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Created simulation trade in {:?}", duration)).await;
 
     Ok(result)
 }
@@ -53,7 +54,8 @@ pub async fn create_sim_trades(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Created {} simulation trades in {:?}", result.len(), duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Created {} simulation trades in {:?}", result.len(), duration)).await;
 
     Ok(result)
 }
@@ -77,7 +79,8 @@ pub async fn get_sim_trades_by_backtest(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Retrieved {} simulation trades in {:?}", result.len(), duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Retrieved {} simulation trades in {:?}", result.len(), duration)).await;
 
     Ok(result)
 }
@@ -103,7 +106,8 @@ pub async fn get_sim_trades_by_symbol_and_backtest(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Retrieved {} simulation trades for {} in {:?}", result.len(), symbol_param, duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Retrieved {} simulation trades for {} in {:?}", result.len(), symbol_param, duration)).await;
 
     Ok(result)
 }

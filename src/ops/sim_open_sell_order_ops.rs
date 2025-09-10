@@ -6,7 +6,7 @@ use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
 use anyhow::Error;
 
-use tracing::{info, error};
+use ultra_logger::UltraLogger;
 use uuid::Uuid;
 
 use crate::models::sim_open_sell_order::{SimOpenSellOrder, NewSimOpenSellOrder};
@@ -30,7 +30,8 @@ pub async fn create_sim_open_sell_order(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Created simulation sell order in {:?}", duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Created simulation sell order in {:?}", duration)).await;
 
     Ok(result)
 }
@@ -53,7 +54,8 @@ pub async fn get_sim_open_sell_orders_by_backtest(
         .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Retrieved {} simulation sell orders in {:?}", result.len(), duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Retrieved {} simulation sell orders in {:?}", result.len(), duration)).await;
 
     Ok(result)
 }
@@ -80,7 +82,8 @@ pub async fn delete_sim_open_sell_order(
     .map_err(|e| anyhow::Error::from(e))?;
 
     let duration = start_time.elapsed();
-    info!("Deleted {} simulation sell orders in {:?}", result, duration);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Deleted {} simulation sell orders in {:?}", result, duration)).await;
 
     Ok(result)
 }

@@ -6,7 +6,7 @@ use diesel::upsert::excluded;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::ExponentialBackoff, Retry, strategy::jitter};
 use uuid::Uuid;
-use tracing::{info, error, debug};
+use ultra_logger::UltraLogger;
 
 use crate::models::backtest_result::{
     BacktestResult, NewBacktestResult, 
@@ -28,7 +28,8 @@ pub async fn create_backtest_result(
     new_result: NewBacktestResult,
 ) -> Result<BacktestResult, Error> {
     let start_time = Instant::now();
-    info!("Creating backtest result for strategy: {}", new_result.strategy_name);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Creating backtest result for strategy: {}", new_result.strategy_name)).await;
     use crate::schema::backtest_results::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -37,7 +38,8 @@ pub async fn create_backtest_result(
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .map_err(|e| {
-                error!("Failed to get database connection: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Failed to get database connection: {}", e));
                 anyhow::Error::from(e)
             })?;
 
@@ -54,11 +56,13 @@ pub async fn create_backtest_result(
             .get_result::<BacktestResult>(&mut connection)
             .await
             .map_err(|e| {
-                error!("Error creating backtest result: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Error creating backtest result: {}", e));
                 anyhow::Error::from(e)
             })?;
             
-        debug!("Created backtest result in {}ms", start_time.elapsed().as_millis());
+        let logger = UltraLogger::new("databaseschema".to_string());
+        let _ = logger.debug(format!("Created backtest result in {}ms", start_time.elapsed().as_millis())).await;
         Ok(result)
     }).await
 }
@@ -69,7 +73,8 @@ pub async fn get_backtest_result(
     result_id: Uuid,
 ) -> Result<Option<BacktestResult>, Error> {
     let start_time = Instant::now();
-    info!("Getting backtest result by ID: {}", result_id);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Getting backtest result by ID: {}", result_id)).await;
     use crate::schema::backtest_results::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -78,7 +83,8 @@ pub async fn get_backtest_result(
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .map_err(|e| {
-                error!("Failed to get database connection: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Failed to get database connection: {}", e));
                 anyhow::Error::from(e)
             })?;
 
@@ -89,11 +95,13 @@ pub async fn get_backtest_result(
             .await
             .optional()
             .map_err(|e| {
-                error!("Error fetching backtest result: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Error fetching backtest result: {}", e));
                 anyhow::Error::from(e)
             })?;
             
-        debug!("Fetched backtest result in {}ms", start_time.elapsed().as_millis());
+        let logger = UltraLogger::new("databaseschema".to_string());
+        let _ = logger.debug(format!("Fetched backtest result in {}ms", start_time.elapsed().as_millis())).await;
         Ok(result)
     }).await
 }
@@ -104,7 +112,8 @@ pub async fn get_backtest_result_by_backtest_id(
     test_id: Uuid,
 ) -> Result<Option<BacktestResult>, Error> {
     let start_time = Instant::now();
-    info!("Getting backtest result by backtest_id: {}", test_id);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Getting backtest result by backtest_id: {}", test_id)).await;
     use crate::schema::backtest_results::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -113,7 +122,8 @@ pub async fn get_backtest_result_by_backtest_id(
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .map_err(|e| {
-                error!("Failed to get database connection: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Failed to get database connection: {}", e));
                 anyhow::Error::from(e)
             })?;
 
@@ -124,11 +134,13 @@ pub async fn get_backtest_result_by_backtest_id(
             .await
             .optional()
             .map_err(|e| {
-                error!("Error fetching backtest result by backtest_id: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Error fetching backtest result by backtest_id: {}", e));
                 anyhow::Error::from(e)
             })?;
             
-        debug!("Fetched backtest result by backtest_id in {}ms", start_time.elapsed().as_millis());
+        let logger = UltraLogger::new("databaseschema".to_string());
+        let _ = logger.debug(format!("Fetched backtest result by backtest_id in {}ms", start_time.elapsed().as_millis())).await;
         Ok(result)
     }).await
 }
@@ -139,11 +151,13 @@ pub async fn get_backtest_results_by_strategy(
     strategy: &str,
 ) -> Result<Vec<BacktestResult>, Error> {
     let start_time = Instant::now();
-    info!("Getting backtest results for strategy: {}", strategy);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Getting backtest results for strategy: {}", strategy)).await;
     
     // Input validation
     if strategy.is_empty() || strategy.len() > 100 {
-        error!("Invalid strategy name length");
+        let logger = UltraLogger::new("databaseschema".to_string());
+        let _ = logger.error(format!("Invalid strategy name length")).await;
         return Err(anyhow::anyhow!("Strategy name must be 1-100 characters"));
     }
     
@@ -155,7 +169,8 @@ pub async fn get_backtest_results_by_strategy(
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .map_err(|e| {
-                error!("Failed to get database connection: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Failed to get database connection: {}", e));
                 anyhow::Error::from(e)
             })?;
 
@@ -167,11 +182,13 @@ pub async fn get_backtest_results_by_strategy(
             .load(&mut connection)
             .await
             .map_err(|e| {
-                error!("Error fetching backtest results by strategy: {}", e);
+                let logger = UltraLogger::new("databaseschema".to_string());
+                let _ = logger.error(format!("Error fetching backtest results by strategy: {}", e));
                 anyhow::Error::from(e)
             })?;
             
-        debug!("Fetched {} backtest results in {}ms", results.len(), start_time.elapsed().as_millis());
+        let logger = UltraLogger::new("databaseschema".to_string());
+        let _ = logger.debug(format!("Fetched {} backtest results in {}ms", results.len(), start_time.elapsed().as_millis())).await;
         Ok(results)
     }).await
 }

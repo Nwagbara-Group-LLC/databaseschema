@@ -7,21 +7,21 @@ use diesel::{prelude::*, result::Error};
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use uuid::Uuid;
-use tracing::{info, error, debug};
+use ultra_logger::UltraLogger;
 use std::time::Instant;
 
 pub async fn create_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orderbook: NewOrderBook) -> Result<OrderBook, Error> {
     let start_time = Instant::now();
-    debug!("Creating orderbook: {:?}", orderbook);
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.debug(format!("Creating orderbook: {:?}", orderbook)).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
             Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UnableToSendCommand,
                 Box::new(e.to_string())
@@ -41,28 +41,35 @@ pub async fn create_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orde
         .first(&mut connection)
         .await
         .map_err(|e| {
-            error!("Error fetching new orderbook: {}", e);
             e
         })?;
         
-    debug!("Orderbook created in {}ms", start_time.elapsed().as_millis());
     Ok(result)
     })
-        .await
+        .await;
+    
+    match result {
+        Ok(orderbook) => {
+            let logger = UltraLogger::new("databaseschema".to_string());
+            let _ = logger.debug(format!("Orderbook created in {}ms", start_time.elapsed().as_millis())).await;
+            Ok(orderbook)
+        }
+        Err(e) => Err(e)
+    }
 }
 
 pub async fn get_orderbooks(pool: Arc<deadpool::Pool<AsyncPgConnection>>) -> Result<Vec<OrderBook>, Error> {
     let start_time = Instant::now();
-    info!("Getting all orderbooks");
+    let logger = UltraLogger::new("databaseschema".to_string());
+    let _ = logger.info(format!("Getting all orderbooks")).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
             Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UnableToSendCommand,
                 Box::new(e.to_string())
@@ -74,27 +81,33 @@ pub async fn get_orderbooks(pool: Arc<deadpool::Pool<AsyncPgConnection>>) -> Res
         .load::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            error!("Error loading orderbooks: {}", e);
             e
         })?;
         
-    info!("Fetched {} orderbooks in {}ms", result.len(), start_time.elapsed().as_millis());
     Ok(result)
-    }).await
+    }).await;
+    
+    match result {
+        Ok(orderbooks) => {
+            let logger = UltraLogger::new("databaseschema".to_string());
+            let _ = logger.info(format!("Fetched {} orderbooks in {}ms", orderbooks.len(), start_time.elapsed().as_millis())).await;
+            Ok(orderbooks)
+        }
+        Err(e) => Err(e)
+    }
 }
 
 pub async fn update_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orderbook: OrderBook, volume: BigDecimal) -> Result<OrderBook, Error> {
     let start_time = Instant::now();
-    debug!("Updating orderbook: {:?}", orderbook);
+    let logger = UltraLogger::new("databaseschema".to_string()); let _ = logger.debug(format!("Updating orderbook: {:?}", orderbook)).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
             .await
             .map_err(|e| {
-                error!("Failed to get database connection: {}", e);
                 Error::DatabaseError(
                     diesel::result::DatabaseErrorKind::UnableToSendCommand,
                     Box::new(e.to_string())
@@ -106,28 +119,34 @@ pub async fn update_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orde
             .get_result(&mut connection)
             .await
             .map_err(|e| {
-                error!("Error updating orderbook: {}", e);
                 e
             })?;
             
-        debug!("Orderbook updated in {}ms", start_time.elapsed().as_millis());
         Ok(result)
     })
-    .await
+    .await;
+    
+    match result {
+        Ok(orderbook) => {
+            let logger = UltraLogger::new("databaseschema".to_string()); 
+            let _ = logger.debug(format!("Orderbook updated in {}ms", start_time.elapsed().as_millis())).await;
+            Ok(orderbook)
+        }
+        Err(e) => Err(e)
+    }
 }
 
 pub async fn get_orderbook_by_orderbook_id(pool: Arc<deadpool::Pool<AsyncPgConnection>>, o_id: Uuid) -> Result<OrderBook, Error> {
     let start_time = Instant::now();
-    info!("Getting orderbook by id: {}", o_id);
+    let logger = UltraLogger::new("databaseschema".to_string()); let _ = logger.info(format!("Getting orderbook by id: {}", o_id)).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
             Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UnableToSendCommand,
                 Box::new(e.to_string())
@@ -139,27 +158,33 @@ pub async fn get_orderbook_by_orderbook_id(pool: Arc<deadpool::Pool<AsyncPgConne
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            error!("Error loading orderbook: {}", e);
             e
         })?;
         
-    debug!("Fetched orderbook in {}ms", start_time.elapsed().as_millis());
     Ok(result)
-    }).await
+    }).await;
+    
+    match result {
+        Ok(orderbook) => {
+            let logger = UltraLogger::new("databaseschema".to_string()); 
+            let _ = logger.debug(format!("Fetched orderbook in {}ms", start_time.elapsed().as_millis())).await;
+            Ok(orderbook)
+        }
+        Err(e) => Err(e)
+    }
 }
 
 pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<deadpool::Pool<AsyncPgConnection>>, e_id: Uuid, s_id: Uuid) -> Result<OrderBook, Error> {
     let start_time = Instant::now();
-    info!("Getting orderbook by exchange_id: {} and security_id: {}", e_id, s_id);
+    let logger = UltraLogger::new("databaseschema".to_string()); let _ = logger.info(format!("Getting orderbook by exchange_id: {} and security_id: {}", e_id, s_id)).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
 
-    Retry::spawn(retry_strategy, || async {
+    let result = Retry::spawn(retry_strategy, || async {
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
             Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UnableToSendCommand,
                 Box::new(e.to_string())
@@ -171,18 +196,25 @@ pub async fn get_orderbook_by_exchange_id_and_security_id(pool: Arc<deadpool::Po
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            error!("Error loading orderbook: {}", e);
             e
         })?;
         
-    debug!("Fetched orderbook in {}ms", start_time.elapsed().as_millis());
     Ok(result)
-    }).await
+    }).await;
+    
+    match result {
+        Ok(orderbook) => {
+            let logger = UltraLogger::new("databaseschema".to_string()); 
+            let _ = logger.debug(format!("Fetched orderbook in {}ms", start_time.elapsed().as_millis())).await;
+            Ok(orderbook)
+        }
+        Err(e) => Err(e)
+    }
 }
 
 pub async fn orderbook_exists(pool: Arc<deadpool::Pool<AsyncPgConnection>>, s_id: Uuid) -> bool {
     let start_time = Instant::now();
-    info!("Checking if orderbook exists for security_id: {}", s_id);
+    let logger = UltraLogger::new("databaseschema".to_string()); let _ = logger.info(format!("Checking if orderbook exists for security_id: {}", s_id)).await;
     use crate::schema::order_books::dsl::*;
 
     let retry_strategy = ExponentialBackoff::from_millis(10).map(jitter).take(3);
@@ -191,7 +223,6 @@ pub async fn orderbook_exists(pool: Arc<deadpool::Pool<AsyncPgConnection>>, s_id
         let mut connection = get_timescale_connection(pool.clone())
         .await
         .map_err(|e| {
-            error!("Failed to get database connection: {}", e);
             Error::DatabaseError(
                 diesel::result::DatabaseErrorKind::UnableToSendCommand,
                 Box::new(e.to_string())
@@ -203,11 +234,11 @@ pub async fn orderbook_exists(pool: Arc<deadpool::Pool<AsyncPgConnection>>, s_id
         .first::<OrderBook>(&mut connection)
         .await
         .map_err(|e| {
-            debug!("Orderbook not found or error loading: {}", e);
             e
         })
     }).await.is_ok();
     
-    debug!("Orderbook existence check completed in {}ms: {}", start_time.elapsed().as_millis(), result);
+    let logger = UltraLogger::new("databaseschema".to_string()); 
+    let _ = logger.debug(format!("Orderbook existence check completed in {}ms: {}", start_time.elapsed().as_millis(), result)).await;
     result
 }

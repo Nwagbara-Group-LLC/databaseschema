@@ -73,7 +73,7 @@ diesel::table! {
         #[max_length = 20]
         format_requested -> Nullable<Varchar>,
         user_agent -> Nullable<Text>,
-        ip_address -> Nullable<Inet>,
+        ip_address -> Nullable<Text>,
         response_time_ms -> Nullable<Int4>,
         success -> Bool,
         error_message -> Nullable<Text>,

@@ -3,7 +3,7 @@ use diesel::result::Error as DieselError;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 use bigdecimal::{BigDecimal, FromPrimitive};
-use tracing::{info, error, warn};
+use ultra_logger::UltraLogger;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 
 use crate::models::strategy::{
@@ -30,11 +30,8 @@ impl StrategyOperations {
         new_strategy: NewStrategy,
     ) -> Result<Strategy, DatabaseError> {
         if new_strategy.strategy_name.is_empty() || new_strategy.strategy_name.len() > 255 {
-            warn!("Invalid strategy name length: {} characters", new_strategy.strategy_name.len());
             return Err(DatabaseError::InvalidInput("Strategy name must be between 1 and 255 characters".to_string()));
         }
-        
-        info!("Creating strategy: {}", new_strategy.strategy_name);
         
         diesel::insert_into(strategies::table)
             .values(&new_strategy)
@@ -44,11 +41,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _) => {
-                        warn!("Attempt to create duplicate strategy: {}", new_strategy.strategy_name);
                         DatabaseError::DuplicateEntry(format!("Strategy '{}' already exists", new_strategy.strategy_name))
                     },
                     _ => {
-                        error!("Database error creating strategy {}: {}", new_strategy.strategy_name, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -60,8 +55,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Uuid,
     ) -> Result<Strategy, DatabaseError> {
-        info!("Fetching strategy with ID: {}", strategy_id);
-        
         strategies::table
             .find(strategy_id)
             .select(Strategy::as_select())
@@ -70,11 +63,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy not found: {}", strategy_id);
                         DatabaseError::NotFound(format!("Strategy with ID {} not found", strategy_id))
                     },
                     _ => {
-                        error!("Database error fetching strategy {}: {}", strategy_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -88,11 +79,8 @@ impl StrategyOperations {
         version: &str,
     ) -> Result<Strategy, DatabaseError> {
         if name.is_empty() || version.is_empty() {
-            warn!("Invalid strategy name or version - empty values provided");
             return Err(DatabaseError::InvalidInput("Strategy name and version cannot be empty".to_string()));
         }
-        
-        info!("Fetching strategy: {} version {}", name, version);
         
         strategies::table
             .filter(strategies::strategy_name.eq(name))
@@ -103,11 +91,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy not found: {} version {}", name, version);
                         DatabaseError::NotFound(format!("Strategy '{}' version '{}' not found", name, version))
                     },
                     _ => {
-                        error!("Database error fetching strategy {} version {}: {}", name, version, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -118,8 +104,6 @@ impl StrategyOperations {
     pub async fn list_active_strategies(
         conn: &mut AsyncPgConnection,
     ) -> Result<Vec<Strategy>, DatabaseError> {
-        info!("Fetching all active strategies");
-        
         strategies::table
             .filter(strategies::is_active.eq(true))
             .order(strategies::strategy_name.asc())
@@ -127,7 +111,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error fetching active strategies: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -138,11 +121,8 @@ impl StrategyOperations {
         strategy_type: &str,
     ) -> Result<Vec<Strategy>, DatabaseError> {
         if strategy_type.is_empty() {
-            warn!("Empty strategy type provided");
             return Err(DatabaseError::InvalidInput("Strategy type cannot be empty".to_string()));
         }
-        
-        info!("Fetching strategies by type: {}", strategy_type);
         
         strategies::table
             .filter(strategies::strategy_type.eq(strategy_type))
@@ -152,7 +132,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error fetching strategies by type {}: {}", strategy_type, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -164,8 +143,6 @@ impl StrategyOperations {
         description: Option<String>,
         is_active: bool,
     ) -> Result<Strategy, DatabaseError> {
-        info!("Updating strategy: {}", strategy_id);
-        
         diesel::update(strategies::table.filter(strategies::id.eq(strategy_id)))
             .set((
                 strategies::description.eq(description),
@@ -178,11 +155,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy not found for update: {}", strategy_id);
                         DatabaseError::NotFound(format!("Strategy with ID {} not found", strategy_id))
                     },
                     _ => {
-                        error!("Database error updating strategy {}: {}", strategy_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -194,8 +169,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Uuid,
     ) -> Result<Strategy, DatabaseError> {
-        info!("Soft deleting strategy: {}", strategy_id);
-        
         diesel::update(strategies::table.filter(strategies::id.eq(strategy_id)))
             .set(strategies::is_active.eq(false))
             .returning(strategies::all_columns)
@@ -204,11 +177,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy not found for deletion: {}", strategy_id);
                         DatabaseError::NotFound(format!("Strategy with ID {} not found", strategy_id))
                     },
                     _ => {
-                        error!("Database error deleting strategy {}: {}", strategy_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -223,11 +194,8 @@ impl StrategyOperations {
         new_parameter: NewStrategyParameter,
     ) -> Result<StrategyParameter, DatabaseError> {
         if new_parameter.parameter_name.is_empty() {
-            warn!("Empty parameter name provided");
             return Err(DatabaseError::InvalidInput("Parameter name cannot be empty".to_string()));
         }
-        
-        info!("Creating strategy parameter: {}", new_parameter.parameter_name);
         
         diesel::insert_into(strategy_parameters::table)
             .values(&new_parameter)
@@ -237,11 +205,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::DatabaseError(diesel::result::DatabaseErrorKind::UniqueViolation, _) => {
-                        warn!("Attempt to create duplicate parameter: {}", new_parameter.parameter_name);
                         DatabaseError::DuplicateEntry(format!("Parameter '{}' already exists", new_parameter.parameter_name))
                     },
                     _ => {
-                        error!("Database error creating parameter {}: {}", new_parameter.parameter_name, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -253,8 +219,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Uuid,
     ) -> Result<Vec<StrategyParameter>, DatabaseError> {
-        info!("Fetching parameters for strategy: {}", strategy_id);
-        
         strategy_parameters::table
             .filter(strategy_parameters::strategy_id.eq(strategy_id))
             .order(strategy_parameters::display_order.asc())
@@ -262,7 +226,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error fetching parameters for strategy {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -272,8 +235,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Uuid,
     ) -> Result<Vec<StrategyParameter>, DatabaseError> {
-        info!("Fetching optimizable parameters for strategy: {}", strategy_id);
-        
         strategy_parameters::table
             .filter(strategy_parameters::strategy_id.eq(strategy_id))
             .filter(strategy_parameters::is_optimizable.eq(true))
@@ -282,7 +243,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error fetching optimizable parameters for strategy {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -292,8 +252,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Uuid,
     ) -> Result<StrategyWithParameters, DatabaseError> {
-        info!("Fetching strategy with parameters: {}", strategy_id);
-        
         let strategy = Self::get_strategy(conn, strategy_id).await?;
         let parameters = Self::get_strategy_parameters(conn, strategy_id).await?;
         
@@ -309,14 +267,11 @@ impl StrategyOperations {
         strategy_id: Uuid,
         parameters: &JsonValue,
     ) -> Result<Vec<ParameterValidationResult>, DatabaseError> {
-        info!("Validating parameters for strategy: {}", strategy_id);
-        
         let param_definitions = Self::get_strategy_parameters(conn, strategy_id).await?;
         let mut results = Vec::new();
 
         let params_obj = parameters.as_object()
             .ok_or_else(|| {
-                warn!("Invalid parameters format - not a JSON object");
                 DatabaseError::InvalidInput("Parameters must be a JSON object".to_string())
             })?;
 
@@ -404,8 +359,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         new_instance: NewStrategyInstance,
     ) -> Result<StrategyInstance, DatabaseError> {
-        info!("Creating strategy instance for strategy: {}", new_instance.strategy_id);
-        
         // Validate parameters before creating
         let validation_results = Self::validate_strategy_parameters(
             conn, 
@@ -419,7 +372,6 @@ impl StrategyOperations {
             .collect();
 
         if !invalid_params.is_empty() {
-            warn!("Invalid parameters found for strategy instance");
             return Err(DatabaseError::InvalidInput("Invalid strategy parameters".to_string()));
         }
 
@@ -429,7 +381,6 @@ impl StrategyOperations {
             .get_result(conn)
             .await
             .map_err(|e| {
-                error!("Database error creating strategy instance: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -439,8 +390,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         instance_id: Uuid,
     ) -> Result<StrategyInstance, DatabaseError> {
-        info!("Fetching strategy instance: {}", instance_id);
-        
         strategy_instances::table
             .find(instance_id)
             .select(StrategyInstance::as_select())
@@ -449,11 +398,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy instance not found: {}", instance_id);
                         DatabaseError::NotFound(format!("Strategy instance with ID {} not found", instance_id))
                     },
                     _ => {
-                        error!("Database error fetching strategy instance {}: {}", instance_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -465,8 +412,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         instance_id: Uuid,
     ) -> Result<FullStrategyInstance, DatabaseError> {
-        info!("Fetching full strategy instance: {}", instance_id);
-        
         let instance = Self::get_strategy_instance(conn, instance_id).await?;
         let strategy = Self::get_strategy(conn, instance.strategy_id).await?;
         let parameters = Self::get_strategy_parameters(conn, instance.strategy_id).await?;
@@ -484,8 +429,6 @@ impl StrategyOperations {
         strategy_id: Uuid,
         include_templates: bool,
     ) -> Result<Vec<StrategyInstance>, DatabaseError> {
-        info!("Listing strategy instances for strategy: {}, include_templates: {}", strategy_id, include_templates);
-        
         let mut query = strategy_instances::table
             .filter(strategy_instances::strategy_id.eq(strategy_id))
             .into_boxed();
@@ -500,7 +443,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error listing strategy instances for {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -510,8 +452,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         strategy_id: Option<Uuid>,
     ) -> Result<Vec<StrategyInstance>, DatabaseError> {
-        info!("Fetching template instances for strategy: {:?}", strategy_id);
-        
         let mut query = strategy_instances::table
             .filter(strategy_instances::is_template.eq(true))
             .into_boxed();
@@ -526,7 +466,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error fetching template instances: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -538,8 +477,6 @@ impl StrategyOperations {
         performance_summary: JsonValue,
         risk_metrics: Option<JsonValue>,
     ) -> Result<StrategyInstance, DatabaseError> {
-        info!("Updating performance for strategy instance: {}", instance_id);
-        
         diesel::update(strategy_instances::table.filter(strategy_instances::id.eq(instance_id)))
             .set((
                 strategy_instances::performance_summary.eq(Some(performance_summary)),
@@ -552,11 +489,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy instance not found for performance update: {}", instance_id);
                         DatabaseError::NotFound(format!("Strategy instance with ID {} not found", instance_id))
                     },
                     _ => {
-                        error!("Database error updating instance performance {}: {}", instance_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -571,11 +506,8 @@ impl StrategyOperations {
         new_run: NewOptimizationRun,
     ) -> Result<OptimizationRun, DatabaseError> {
         if new_run.run_name.is_empty() {
-            warn!("Empty optimization run name provided");
             return Err(DatabaseError::InvalidInput("Optimization run name cannot be empty".to_string()));
         }
-        
-        info!("Creating optimization run: {}", new_run.run_name);
         
         diesel::insert_into(optimization_runs::table)
             .values(&new_run)
@@ -583,7 +515,6 @@ impl StrategyOperations {
             .get_result(conn)
             .await
             .map_err(|e| {
-                error!("Database error creating optimization run {}: {}", new_run.run_name, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -593,8 +524,6 @@ impl StrategyOperations {
         conn: &mut AsyncPgConnection,
         run_id: Uuid,
     ) -> Result<OptimizationRun, DatabaseError> {
-        info!("Fetching optimization run: {}", run_id);
-        
         optimization_runs::table
             .find(run_id)
             .select(OptimizationRun::as_select())
@@ -603,11 +532,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Optimization run not found: {}", run_id);
                         DatabaseError::NotFound(format!("Optimization run with ID {} not found", run_id))
                     },
                     _ => {
-                        error!("Database error fetching optimization run {}: {}", run_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -625,11 +552,8 @@ impl StrategyOperations {
         error_message: Option<String>,
     ) -> Result<OptimizationRun, DatabaseError> {
         if status.is_empty() {
-            warn!("Empty status provided for optimization run update");
             return Err(DatabaseError::InvalidInput("Status cannot be empty".to_string()));
         }
-        
-        info!("Updating optimization run status: {} to {}", run_id, status);
         
         diesel::update(optimization_runs::table.filter(optimization_runs::id.eq(run_id)))
             .set((
@@ -646,11 +570,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Optimization run not found for status update: {}", run_id);
                         DatabaseError::NotFound(format!("Optimization run with ID {} not found", run_id))
                     },
                     _ => {
-                        error!("Database error updating optimization run status {}: {}", run_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -668,7 +590,6 @@ impl StrategyOperations {
             .get_result(conn)
             .await
             .map_err(|e| {
-                error!("Database error creating optimization iteration: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -691,7 +612,6 @@ impl StrategyOperations {
         query.load(conn)
             .await
             .map_err(|e| {
-                error!("Database error getting optimization iterations for run {}: {}", run_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -710,7 +630,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error getting best optimization results for run {}: {}", run_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -723,11 +642,8 @@ impl StrategyOperations {
         new_comparison: NewStrategyComparison,
     ) -> Result<StrategyComparison, DatabaseError> {
         if new_comparison.comparison_name.is_empty() || new_comparison.comparison_name.len() > 255 {
-            warn!("Invalid comparison name length: {} characters", new_comparison.comparison_name.len());
             return Err(DatabaseError::InvalidInput("Comparison name must be between 1 and 255 characters".to_string()));
         }
-        
-        info!("Creating strategy comparison: {}", new_comparison.comparison_name);
         
         diesel::insert_into(strategy_comparisons::table)
             .values(&new_comparison)
@@ -735,7 +651,6 @@ impl StrategyOperations {
             .get_result(conn)
             .await
             .map_err(|e| {
-                error!("Database error creating strategy comparison {}: {}", new_comparison.comparison_name, e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -752,11 +667,9 @@ impl StrategyOperations {
             .map_err(|e| {
                 match e {
                     DieselError::NotFound => {
-                        warn!("Strategy comparison not found: {}", comparison_id);
                         DatabaseError::NotFound(format!("Strategy comparison with ID {} not found", comparison_id))
                     },
                     _ => {
-                        error!("Database error getting strategy comparison {}: {}", comparison_id, e);
                         DatabaseError::DatabaseError(e.to_string())
                     }
                 }
@@ -785,7 +698,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error listing strategy comparisons: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
@@ -806,7 +718,6 @@ impl StrategyOperations {
             .first(conn)
             .await
             .map_err(|e| {
-                error!("Database error counting strategy instances for {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })?;
 
@@ -816,7 +727,6 @@ impl StrategyOperations {
             .first(conn)
             .await
             .map_err(|e| {
-                error!("Database error counting optimization runs for {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })?;
 
@@ -827,7 +737,6 @@ impl StrategyOperations {
             .first(conn)
             .await
             .map_err(|e| {
-                error!("Database error counting strategy templates for {}: {}", strategy_id, e);
                 DatabaseError::DatabaseError(e.to_string())
             })?;
 
@@ -846,11 +755,8 @@ impl StrategyOperations {
         active_only: bool,
     ) -> Result<Vec<Strategy>, DatabaseError> {
         if search_term.is_empty() {
-            warn!("Empty search term provided");
             return Err(DatabaseError::InvalidInput("Search term cannot be empty".to_string()));
         }
-        
-        info!("Searching strategies with term: {}", search_term);
         
         let mut query = strategies::table.into_boxed();
 
@@ -876,7 +782,6 @@ impl StrategyOperations {
             .load(conn)
             .await
             .map_err(|e| {
-                error!("Database error searching strategies: {}", e);
                 DatabaseError::DatabaseError(e.to_string())
             })
     }
