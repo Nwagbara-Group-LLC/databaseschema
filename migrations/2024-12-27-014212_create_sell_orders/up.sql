@@ -20,8 +20,8 @@ ALTER TABLE open_sell_orders SET (
     timescaledb.compress_orderby = 'price_level ASC'
 );
 
-SELECT add_compression_policy('open_sell_orders', INTERVAL '7 days');
-SELECT add_retention_policy('open_sell_orders', INTERVAL '6 years');
+SELECT add_compression_policy('open_sell_orders', INTERVAL '1 day');
+SELECT add_retention_policy('open_sell_orders', INTERVAL '1 year');
 
 -- Index on unique_id for faster lookups by unique_id
 CREATE INDEX idx_open_sell_unique_id ON open_sell_orders (unique_id);

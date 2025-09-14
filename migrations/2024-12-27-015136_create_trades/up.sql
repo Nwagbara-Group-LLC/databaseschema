@@ -20,7 +20,7 @@ ALTER TABLE trades SET (
     timescaledb.compress_orderby = 'created_at DESC'
 );
 
-SELECT add_compression_policy('trades', INTERVAL '7 days');
+SELECT add_compression_policy('trades', INTERVAL '1 day');
 SELECT add_retention_policy('trades', INTERVAL '6 years');
 
 -- Index on symbol for faster lookups by symbol

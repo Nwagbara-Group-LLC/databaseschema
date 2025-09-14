@@ -217,8 +217,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    candles (id) {
-        id -> Uuid,
+    candles (timestamp, symbol, timeframe) {
         timestamp -> Timestamptz,
         #[max_length = 20]
         symbol -> Varchar,
@@ -248,7 +247,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    historical_orders (event_id) {
+    historical_orders (timestamp, event_id) {
         event_id -> Uuid,
         timestamp -> Timestamptz,
         order_id -> Text,
@@ -267,7 +266,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    historical_snapshot (event_id) {
+    historical_snapshot (timestamp, event_id) {
         event_id -> Uuid,
         timestamp -> Timestamptz,
         order_id -> Text,
