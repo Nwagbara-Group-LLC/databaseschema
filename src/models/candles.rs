@@ -20,6 +20,8 @@ pub struct Candle1m {
     pub close_price: BigDecimal,
     pub volume: BigDecimal,
     pub trade_count: i32,
+    pub timeframe: String,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Model for 5-minute candles from continuous aggregates
@@ -38,6 +40,8 @@ pub struct Candle5m {
     pub close_price: BigDecimal,
     pub volume: BigDecimal,
     pub trade_count: i32,
+    pub timeframe: String,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Model for 15-minute candles from continuous aggregates
@@ -56,6 +60,8 @@ pub struct Candle15m {
     pub close_price: BigDecimal,
     pub volume: BigDecimal,
     pub trade_count: i32,
+    pub timeframe: String,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Model for 1-hour candles from continuous aggregates
@@ -74,6 +80,8 @@ pub struct Candle1h {
     pub close_price: BigDecimal,
     pub volume: BigDecimal,
     pub trade_count: i32,
+    pub timeframe: String,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Model for 1-day candles from continuous aggregates
@@ -92,6 +100,8 @@ pub struct Candle1d {
     pub close_price: BigDecimal,
     pub volume: BigDecimal,
     pub trade_count: i32,
+    pub timeframe: String,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Generic trait for candle data to enable unified handling
@@ -173,7 +183,6 @@ impl CandleData for Candle1d {
 #[diesel(table_name = crate::schema::candles)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Candle {
-    pub id: Uuid,
     pub timestamp: DateTime<Utc>,
     pub symbol: String,
     pub exchange: String,
