@@ -1,4 +1,4 @@
-# DatabaseSchema# DatabaseSchema# 🗃️ DatabaseSchema - Trading Platform Database Library
+# 🗃️ DatabaseSchema - Trading Platform Database Library
 
 
 
