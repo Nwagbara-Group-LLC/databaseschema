@@ -1,456 +1,910 @@
-# DatabaseSchema# 🗃️ DatabaseSchema - Trading Platform Database Library
+# Database Schema# DatabaseSchema# 🗃️ DatabaseSchema - Trading Platform Database Library
 
 
 
-**PostgreSQL database library and migrations for the Trading Platform.**
+**Production-ready PostgreSQL schema library for high-performance trading platforms**
 
 
 
-[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)**PostgreSQL database library and migrations for the Trading Platform.**
-
-[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+## Overview**PostgreSQL database library and migrations for the Trading Platform.**
 
 
+
+`databaseschema` is a dual-purpose Rust library that provides:
+
+1. **Connection Pooling** - Async PostgreSQL connections with automatic retry logic
+
+2. **Migration Runner** - Diesel-based schema migrations for TimescaleDB + PostGIS[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)**PostgreSQL database library and migrations for the Trading Platform.**
+
+
+
+This library manages the complete database schema for a quantitative trading platform, including:[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
+
+- Securities and exchange metadata
+
+- Real-time order books and trades[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+- Simulation and backtesting data
+
+- Historical snapshots and analytics
+
+- Strategy execution tracking
 
 ---[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)**Rust library providing PostgreSQL schema and migrations for the Trading Platform.**[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)
 
+## Architecture
 
+
+
+### Connection Pooling
 
 ## What is this?[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
 
+Uses **deadpool** for async connection pooling with intelligent retry logic:
 
 
-This is a **library**, not a standalone service. It has two purposes:[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
-
-
-
-1. **Rust Library** - Imported by DataEngine and other services for PostgreSQL connection pooling
-
-2. **Migration Runner** - Diesel migrations that run in Kubernetes Jobs
-
----## What is this?[![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
-
-**Important:**
-
-- ❌ NOT a standalone microservice
-
-- ❌ NO HTTP server or API
-
-- ✅ Library used by other services## What is this?[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-
-- ✅ Contains Diesel migrations
-
-
-
----
-
-This is a **library**, not a standalone service. It has two purposes:This is a **library**, not a standalone service. It serves two purposes:
-
-## Usage as a Library
-
-
-
-```toml
-
-# Cargo.toml1. **Rust Library** - Imported by DataEngine and other services for PostgreSQL connection poolingA **Rust library** providing database schema, connection pooling, and Diesel migrations for the Trading Platform ecosystem.
-
-[dependencies]
-
-databaseschema = { path = "../databaseschema" }2. **Migration Runner** - Diesel migrations that run in Kubernetes Jobs
-
-```
-
-1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
 
 ```rust
 
-use databaseschema::{create_timescale_connection_pool, get_timescale_connection};**Important:**
+// Creates a pool of connections with exponential backoff retryThis is a **library**, not a standalone service. It has two purposes:[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)[![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
 
-use std::sync::Arc;
+create_timescale_connection_pool() -> Pool<AsyncPgConnection>
 
-- ❌ NOT a standalone microservice2. **Migration Runner**: Diesel migrations run in a Kubernetes Job---
 
-#[tokio::main]
 
-async fn main() {- ❌ NO HTTP server or API
+// Gets a single connection with 3 retry attempts
 
-    let pool = Arc::new(create_timescale_connection_pool());
-
-    let conn = get_timescale_connection(pool).await.unwrap();- ✅ Library used by other services
-
-    // Use connection for database operations
-
-}- ✅ Contains Diesel migrations
+get_timescale_connection() -> Result<PooledConnection<AsyncPgConnection>, Error>1. **Rust Library** - Imported by DataEngine and other services for PostgreSQL connection pooling
 
 ```
 
-## Usage as a Library## 🎯 **What is this?**
+2. **Migration Runner** - Diesel migrations that run in Kubernetes Jobs
 
----
+**Retry Strategy:**
 
----
+- 3 attempts with exponential backoff---## What is this?[![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
 
-## Running Migrations
+- Delays: 2s → 4s → 8s
+
+- Automatic reconnection on transient failures**Important:**
 
 
 
-### Local Development
-
-## Usage as a Library
+**Configuration** (via environment variables):- ❌ NOT a standalone microservice
 
 ```bash
 
-# Install diesel CLI```toml**DatabaseSchema is a LIBRARY, not a standalone service.**
+DATABASE_URL=postgresql://user:pass@host:port/dbname- ❌ NO HTTP server or API
+
+POOL_SIZE=10              # Optional, default: 10
+
+```- ✅ Library used by other services## What is this?[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+
+
+### Dependencies- ✅ Contains Diesel migrations
+
+
+
+| Dependency | Version | Purpose |
+
+|------------|---------|---------|
+
+| `diesel` | 2.2.2 | SQL query builder with PostgreSQL support |---
+
+| `diesel-async` | 0.5.0 | Async operations with deadpool integration |
+
+| `deadpool` | - | Connection pooling for production workloads |This is a **library**, not a standalone service. It has two purposes:This is a **library**, not a standalone service. It serves two purposes:
+
+| `bigdecimal` | - | High-precision financial calculations |
+
+| `chrono` | - | Timezone-aware timestamp handling |## Usage as a Library
+
+| `tokio-retry` | - | Exponential backoff retry logic |
+
+| `native-tls` | - | SSL/TLS for secure database connections |
+
+
+
+**Diesel Features Enabled:**```toml
+
+- `postgres` - PostgreSQL database support
+
+- `uuid-ossp` - UUID generation# Cargo.toml1. **Rust Library** - Imported by DataEngine and other services for PostgreSQL connection poolingA **Rust library** providing database schema, connection pooling, and Diesel migrations for the Trading Platform ecosystem.
+
+- `numeric` - `bigdecimal` support for precise decimals
+
+- `64-column-tables` - Support for wide tables[dependencies]
+
+
+
+## Database Schemadatabaseschema = { path = "../databaseschema" }2. **Migration Runner** - Diesel migrations that run in Kubernetes Jobs
+
+
+
+The schema consists of **18 migrations** organized chronologically:```
+
+
+
+### Core Trading Infrastructure (2024-12-27)1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
+
+
+
+**1. Securities** - Master security definitions```rust
+
+- `security_id` (UUID, primary key)
+
+- `symbol`, `exchange`, `security_type`use databaseschema::{create_timescale_connection_pool, get_timescale_connection};**Important:**
+
+- `tick_size`, `lot_size` for precision
+
+use std::sync::Arc;
+
+**2. Exchanges** - Exchange metadata
+
+- `exchange_id`, `exchange_name`, `exchange_code`- ❌ NOT a standalone microservice2. **Migration Runner**: Diesel migrations run in a Kubernetes Job---
+
+- Trading hours and timezone support
+
+#[tokio::main]
+
+**3. Order Books** - Real-time market data
+
+- `order_book_id`, `security_id`, `timestamp`async fn main() {- ❌ NO HTTP server or API
+
+- Best bid/ask tracking
+
+    let pool = Arc::new(create_timescale_connection_pool());
+
+**4. Buy Orders & 5. Sell Orders** - Live order flow
+
+- `order_id`, `security_id`, `price`, `quantity`    let conn = get_timescale_connection(pool).await.unwrap();- ✅ Library used by other services
+
+- `order_type` (LIMIT, MARKET, STOP)
+
+- `status` (PENDING, FILLED, CANCELLED)    // Use connection for database operations
+
+- TimescaleDB hypertable for time-series optimization
+
+}- ✅ Contains Diesel migrations
+
+**6. Trades** - Executed trade records
+
+- `trade_id`, `security_id`, `price`, `quantity````
+
+- `buyer_order_id`, `seller_order_id`
+
+- `timestamp` with TimescaleDB indexing## Usage as a Library## 🎯 **What is this?**
+
+
+
+### Simulation & Testing (2025-02-08, 2025-02-14, 2025-02-26)---
+
+
+
+**7. Sim Buy Orders & 8. Sim Sell Orders** - Paper trading---
+
+- Isolated simulation environment
+
+- Same schema as live orders## Running Migrations
+
+
+
+**9. Sim Trades** - Simulated executions
+
+- Backtesting and strategy validation
+
+### Local Development
+
+**10. Historical Orders** - Order book snapshots
+
+- Point-in-time reconstruction## Usage as a Library
+
+- Market replay capabilities
+
+```bash
+
+**11. Historical Snapshot** - Aggregated market data
+
+- OHLCV (Open, High, Low, Close, Volume)# Install diesel CLI```toml**DatabaseSchema is a LIBRARY, not a standalone service.**
+
+- Time-series compression
 
 cargo install diesel_cli --no-default-features --features postgres
 
+### Backtesting Framework (2025-08-17, 2025-08-23)
+
 ```toml
 
-# Run migrations
+**12. Backtest Results** - Performance metrics
 
-diesel migration run# Cargo.toml# Cargo.toml
+- `backtest_id`, `strategy_id`, `start_date`, `end_date`# Run migrations
 
+- P&L, Sharpe ratio, max drawdown
 
-
-# Rollback last migration[dependencies]
-
-diesel migration revert
-
-```databaseschema = { path = "../databaseschema" }[dependencies]It serves two purposes:
+- Execution statisticsdiesel migration run# Cargo.toml# Cargo.toml
 
 
 
-### Production (Kubernetes)```
+**13. Strategy Schema** - Strategy definitions
+
+- `strategy_id`, `name`, `parameters` (JSONB)
+
+- Version tracking# Rollback last migration[dependencies]
 
 
+
+**14. Backtest Related Tables** - Execution detailsdiesel migration revert
+
+- Position history
+
+- Trade-by-trade breakdown```databaseschema = { path = "../databaseschema" }[dependencies]It serves two purposes:
+
+- Risk metrics
+
+
+
+**15. Backtest Reports** - HTML/JSON reports
+
+- Tear sheets and analytics### Production (Kubernetes)```
+
+- Custom report generation
+
+
+
+### Market Data (2025-08-24)
 
 Migrations run automatically via GitHub Actions and Kubernetes Jobs.databaseschema = { path = "../databaseschema" }1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
 
+**16. Candles** - OHLCV bars
+
+- Multiple timeframes (1m, 5m, 1h, 1d)
+
+- TimescaleDB continuous aggregates
+
+- Efficient range queriesThe workflow builds a Docker image that runs `diesel migration run`:```rust
 
 
-The workflow builds a Docker image that runs `diesel migration run`:```rust
+
+### Strategy Execution (2025-08-28)
 
 
 
-```yamluse databaseschema::{create_timescale_connection_pool, get_timescale_connection};```2. **Migration Runner**: Contains Diesel migrations that run in a Kubernetes Job
+**17. Strategy Orders** - Algorithm order tracking```yamluse databaseschema::{create_timescale_connection_pool, get_timescale_connection};```2. **Migration Runner**: Contains Diesel migrations that run in a Kubernetes Job
 
-# Deployed via k8s/migrations.yaml
+- Links strategies to executed orders
+
+- Performance attribution# Deployed via k8s/migrations.yaml
+
+- Slippage analysis
 
 apiVersion: batch/v1use std::sync::Arc;
 
+## Usage
+
 kind: Job
+
+### As a Library
 
 metadata:
 
-  name: database-migrations
+Add to your `Cargo.toml`:
 
-spec:#[tokio::main]
+```toml  name: database-migrations
 
-  template:
+[dependencies]
 
-    spec:async fn main() {```rust### **Important**
-
-      containers:
-
-      - name: migrations    let pool = Arc::new(create_timescale_connection_pool());
-
-        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
-
-        env:    let conn = get_timescale_connection(pool).await.unwrap();use databaseschema::{create_timescale_connection_pool, get_timescale_connection};- ❌ **NOT** a standalone microservice
-
-        - name: DATABASE_URL
-
-          valueFrom:    // Use connection for database operations
-
-            secretKeyRef:
-
-              name: database-secret}use std::sync::Arc;- ❌ **NO** HTTP server or API
-
-              key: url
-
-``````
-
-
-
----- ✅ **Library** used by other services
-
-
-
-## Configuration---
-
-
-
-Create a `.env` file (see `.env.example`):#[tokio::main]- ✅ **Contains** Diesel migrations for database schema
-
-
-
-```bash## Running Migrations
-
-DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require
-
-```async fn main() {
-
-
-
-**Never commit the `.env` file!** It contains credentials.### Local Development
-
-
-
----    let pool = Arc::new(create_timescale_connection_pool());---
-
-
-
-## Database Schema```bash
-
-
-
-The library provides:# Install diesel CLI    let conn = get_timescale_connection(pool).await.unwrap();
-
-
-
-- **TimescaleDB hypertables** for time-series market datacargo install diesel_cli --no-default-features --features postgres
-
-- **PostgreSQL with PostGIS** for geospatial data
-
-- **Diesel ORM** for type-safe queries    // Use connection...## � **Usage**
-
-- **Deadpool** for async connection pooling
-
-# Run migrations
-
-### Core Tables
-
-diesel migration run}
-
-- `securities` - Security master data (symbols, exchanges)
-
-- `order_books` - Real-time order book data (TimescaleDB hypertable)
-
-- `trades` - Trade execution history
-
-- `positions` - Portfolio positions# Rollback last migration```### **As a Library (in other Rust projects)**
-
-- `backtest_results` - Backtesting results
-
-diesel migration revert
-
----
+databaseschema = { path = "../databaseschema" }spec:#[tokio::main]
 
 ```
 
-## CI/CD
+  template:
+
+**Create a connection pool:**
+
+```rust    spec:async fn main() {```rust### **Important**
+
+use databaseschema::create_timescale_connection_pool;
+
+      containers:
+
+#[tokio::main]
+
+async fn main() {      - name: migrations    let pool = Arc::new(create_timescale_connection_pool());
+
+    dotenv::dotenv().ok();
+
+            image: ghcr.io/nwagbara-group-llc/databaseschema:latest
+
+    let pool = create_timescale_connection_pool();
+
+    let mut conn = pool.get().await.expect("Failed to get connection");        env:    let conn = get_timescale_connection(pool).await.unwrap();use databaseschema::{create_timescale_connection_pool, get_timescale_connection};- ❌ **NOT** a standalone microservice
+
+    
+
+    // Use conn with diesel-async queries        - name: DATABASE_URL
+
+}
+
+```          valueFrom:    // Use connection for database operations
 
 
 
-### Automatic Image Builds
+**With retry logic:**            secretKeyRef:
 
-### Production (Kubernetes)## Running Migrations```rust
+```rust
 
-GitHub Actions automatically builds and pushes to GHCR when you:
-
-- Change migrations
-
-- Update source code
-
-- Modify DockerfileMigrations run automatically via GitHub Actions and Kubernetes Jobs.use databaseschema::{create_timescale_connection_pool, get_timescale_connection};
+use databaseschema::get_timescale_connection;              name: database-secret}use std::sync::Arc;- ❌ **NO** HTTP server or API
 
 
 
-**No manual steps needed!** Just `git push`.
+let mut conn = get_timescale_connection()              key: url
+
+    .await
+
+    .expect("Failed to get connection after retries");``````
+
+```
 
 
 
-### Image LocationThe workflow builds a Docker image that runs `diesel migration run`:### Local Developmentuse std::sync::Arc;
+### Running Migrations
+
+---- ✅ **Library** used by other services
+
+**Prerequisites:**
+
+```bash
+
+# Install Diesel CLI (version 2.2.4 recommended)
+
+cargo install diesel_cli --version 2.2.4 --no-default-features --features postgres## Configuration---
 
 
+
+# Set database URL
+
+export DATABASE_URL=postgresql://user:pass@localhost:5432/tradingdb
+
+```Create a `.env` file (see `.env.example`):#[tokio::main]- ✅ **Contains** Diesel migrations for database schema
+
+
+
+**Apply all migrations:**
+
+```bash
+
+diesel migration run```bash## Running Migrations
+
+```
+
+DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require
+
+**Rollback last migration:**
+
+```bash```async fn main() {
+
+diesel migration revert
+
+```
+
+
+
+**Check migration status:****Never commit the `.env` file!** It contains credentials.### Local Development
+
+```bash
+
+diesel migration list
+
+```
+
+---    let pool = Arc::new(create_timescale_connection_pool());---
+
+### Creating New Migrations
+
+
+
+```bash
+
+# Generate migration files## Database Schema```bash
+
+diesel migration generate <migration_name>
+
+
+
+# Edit the generated up.sql and down.sql files
+
+# Example: migrations/2025-XX-XX-XXXXXX_<migration_name>/up.sqlThe library provides:# Install diesel CLI    let conn = get_timescale_connection(pool).await.unwrap();
+
+
+
+# Test migration
+
+diesel migration run
+
+diesel migration revert- **TimescaleDB hypertables** for time-series market datacargo install diesel_cli --no-default-features --features postgres
+
+diesel migration run
+
+```- **PostgreSQL with PostGIS** for geospatial data
+
+
+
+**Best Practices:**- **Diesel ORM** for type-safe queries    // Use connection...## � **Usage**
+
+- Name migrations descriptively: `create_order_execution_table`
+
+- Always write reversible `down.sql` migrations- **Deadpool** for async connection pooling
+
+- Test rollback before committing
+
+- Use TimescaleDB for time-series tables:# Run migrations
+
+  ```sql
+
+  CREATE TABLE trades (...);### Core Tables
+
+  SELECT create_hypertable('trades', 'timestamp');
+
+  ```diesel migration run}
+
+
+
+## CI/CD Automation- `securities` - Security master data (symbols, exchanges)
+
+
+
+### GitHub Actions Workflow- `order_books` - Real-time order book data (TimescaleDB hypertable)
+
+
+
+**Trigger:** Automatic builds on changes to:- `trades` - Trade execution history
+
+- `migrations/**`
+
+- `src/**`- `positions` - Portfolio positions# Rollback last migration```### **As a Library (in other Rust projects)**
+
+- `Dockerfile`
+
+- `backtest_results` - Backtesting results
+
+**Process:**
+
+1. Checkout codediesel migration revert
+
+2. Login to GitHub Container Registry (GHCR)
+
+3. Build Docker image (migration runner)---
+
+4. Push to `ghcr.io/nwagbara-group-llc/databaseschema:latest`
+
+5. Tag with Git SHA for traceability```
+
+
+
+**Image Tags:**## CI/CD
+
+- `latest` - Most recent build
+
+- `sha-<git-sha>` - Specific commit version
+
+
+
+### Docker Image### Automatic Image Builds
+
+
+
+**Purpose:** Kubernetes Job for applying migrations### Production (Kubernetes)## Running Migrations```rust
+
+
+
+**Usage in Kubernetes:**GitHub Actions automatically builds and pushes to GHCR when you:
+
+```yaml
+
+apiVersion: batch/v1- Change migrations
+
+kind: Job
+
+metadata:- Update source code
+
+  name: database-migrations
+
+spec:- Modify DockerfileMigrations run automatically via GitHub Actions and Kubernetes Jobs.use databaseschema::{create_timescale_connection_pool, get_timescale_connection};
+
+  template:
+
+    spec:
+
+      containers:
+
+      - name: migrations**No manual steps needed!** Just `git push`.
+
+        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
+
+        env:
+
+        - name: DATABASE_URL
+
+          valueFrom:### Image LocationThe workflow builds a Docker image that runs `diesel migration run`:### Local Developmentuse std::sync::Arc;
+
+            secretKeyRef:
+
+              name: db-credentials
+
+              key: url
+
+      restartPolicy: OnFailure```
 
 ```
 
 ghcr.io/nwagbara-group-llc/databaseschema:latest
 
-ghcr.io/nwagbara-group-llc/databaseschema:sha-abc123```yaml
+**Image Contents:**
 
-```
+- Diesel CLI 2.2.4ghcr.io/nwagbara-group-llc/databaseschema:sha-abc123```yaml
+
+- PostgreSQL client tools
+
+- All migration files```
+
+- SSL/TLS support
 
 # Deployed via k8s/migrations.yaml
 
+## Configuration
+
 ---
+
+### Environment Variables
 
 apiVersion: batch/v1```bash#[tokio::main]
 
-## Creating Migrations
+| Variable | Required | Default | Description |
 
-kind: Job
+|----------|----------|---------|-------------|## Creating Migrations
+
+| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+
+| `POOL_SIZE` | No | 10 | Connection pool size |kind: Job
+
+| `PGSSLMODE` | No | `prefer` | SSL mode (require, prefer, disable) |
 
 ```bash
 
-# Create new migrationmetadata:# Install diesel CLIasync fn main() {
+**Example `.env`:**
 
-diesel migration generate add_new_table
+```bash# Create new migrationmetadata:# Install diesel CLIasync fn main() {
 
-  name: database-migrations
+DATABASE_URL=postgresql://trading_user:secure_password@postgres:5432/trading_db?sslmode=require
 
-# Edit the generated files
+POOL_SIZE=20diesel migration generate add_new_table
 
-# migrations/YYYY-MM-DD-HHMMSS_add_new_table/up.sqlspec:cargo install diesel_cli --no-default-features --features postgres    // Create connection pool
+PGSSLMODE=require
 
-# migrations/YYYY-MM-DD-HHMMSS_add_new_table/down.sql
+```  name: database-migrations
 
-  template:
 
-# Test locally
+
+### PostgreSQL Requirements# Edit the generated files
+
+
+
+**Minimum Version:** PostgreSQL 15+# migrations/YYYY-MM-DD-HHMMSS_add_new_table/up.sqlspec:cargo install diesel_cli --no-default-features --features postgres    // Create connection pool
+
+
+
+**Required Extensions:**# migrations/YYYY-MM-DD-HHMMSS_add_new_table/down.sql
+
+```sql
+
+CREATE EXTENSION IF NOT EXISTS timescaledb;  template:
+
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";# Test locally
+
+```
 
 diesel migration run    spec:    let pool = Arc::new(create_timescale_connection_pool());
 
-diesel migration revert
+**Recommended Configuration:**
 
-diesel migration run      containers:
+```sqldiesel migration revert
 
+-- For time-series optimization
 
-
-# Commit and push      - name: migrations# Run migrations    
-
-git add migrations/
-
-git commit -m "Add new migration"        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
-
-git push  # GitHub Actions builds and pushes automatically
-
-```        env:diesel migration run    // Get connection from pool
+ALTER DATABASE trading_db SET timescaledb.max_background_workers = 8;diesel migration run      containers:
 
 
 
----        - name: DATABASE_URL
+-- For large result sets
+
+ALTER DATABASE trading_db SET work_mem = '256MB';
+
+```# Commit and push      - name: migrations# Run migrations    
 
 
 
-## Dependencies          valueFrom:```    let conn = get_timescale_connection(pool).await.unwrap();
+## Performance Optimizationgit add migrations/
 
 
 
-- **PostgreSQL 15+** with PostGIS extension            secretKeyRef:
-
-- **TimescaleDB** for time-series optimization
-
-- **Diesel ORM** for migrations and queries              name: database-secret    
-
-- **Deadpool** for async connection pooling
-
-              key: url
-
----
-
-```### Kubernetes (Production)    // Use connection...
-
-## Used By
+### TimescaleDB Featuresgit commit -m "Add new migration"        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
 
 
+
+**Hypertables** - Automatic partitioning for time-series data:git push  # GitHub Actions builds and pushes automatically
+
+```sql
+
+SELECT create_hypertable('trades', 'timestamp', chunk_time_interval => INTERVAL '1 day');```        env:diesel migration run    // Get connection from pool
+
+```
+
+
+
+**Continuous Aggregates** - Pre-computed rollups:
+
+```sql---        - name: DATABASE_URL
+
+CREATE MATERIALIZED VIEW candles_1h
+
+WITH (timescaledb.continuous) AS
+
+SELECT time_bucket('1 hour', timestamp) AS bucket,
+
+       security_id,## Dependencies          valueFrom:```    let conn = get_timescale_connection(pool).await.unwrap();
+
+       first(price, timestamp) AS open,
+
+       max(price) AS high,
+
+       min(price) AS low,
+
+       last(price, timestamp) AS close,- **PostgreSQL 15+** with PostGIS extension            secretKeyRef:
+
+       sum(quantity) AS volume
+
+FROM trades- **TimescaleDB** for time-series optimization
+
+GROUP BY bucket, security_id;
+
+```- **Diesel ORM** for migrations and queries              name: database-secret    
+
+
+
+**Compression** - Reduce storage by 90%+:- **Deadpool** for async connection pooling
+
+```sql
+
+ALTER TABLE trades SET (              key: url
+
+  timescaledb.compress,
+
+  timescaledb.compress_orderby = 'timestamp DESC',---
+
+  timescaledb.compress_segmentby = 'security_id'
+
+);```### Kubernetes (Production)    // Use connection...
+
+
+
+SELECT add_compression_policy('trades', INTERVAL '7 days');## Used By
+
+```
+
+
+
+### Indexing Strategy
 
 - **DataEngine** - Market data processing
 
-- **SignalEngine** - Trading signal generation---}
+**Essential Indexes:**
 
-- **BacktestingEngine** - Historical backtesting
+```sql- **SignalEngine** - Trading signal generation---}
+
+-- Time-range queries
+
+CREATE INDEX idx_trades_timestamp ON trades (timestamp DESC);- **BacktestingEngine** - Historical backtesting
 
 
+
+-- Security lookups
+
+CREATE INDEX idx_trades_security ON trades (security_id, timestamp DESC);
 
 All services import this library for database connectivity instead of implementing their own connection management.
 
-## ConfigurationMigrations run automatically via a Kubernetes Job using the `databaseschema` Docker image:```
+-- Order matching
+
+CREATE INDEX idx_orders_status ON buy_orders (status, price DESC);## ConfigurationMigrations run automatically via a Kubernetes Job using the `databaseschema` Docker image:```
+
+```
 
 ---
 
+## Troubleshooting
 
+
+
+### Connection Issues
 
 ## License
 
-Create a `.env` file (see `.env.example`):
+**Problem:** `Failed to get connection after retries`
 
-Apache 2.0
+- **Check:** DATABASE_URL is correctCreate a `.env` file (see `.env.example`):
+
+- **Verify:** PostgreSQL is running and accessible
+
+- **Test:** `psql $DATABASE_URL`Apache 2.0
+
+- **Increase:** Retry attempts in `get_timescale_connection()`
 
 
+
+### Migration Failures
 
 ```bash```bash### **Running Migrations (Kubernetes Job)**
 
-DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require
+**Problem:** `diesel migration run` fails
 
-```kubectl apply -f k8s/migrations.yaml
+- **Check:** PostgreSQL version (15+ required)DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require
+
+- **Verify:** TimescaleDB extension installed
+
+- **Review:** Migration logs in `diesel_migrations` table```kubectl apply -f k8s/migrations.yaml
+
+- **Rollback:** `diesel migration revert` and fix SQL
 
 
+
+### Docker Build Failures
 
 **Never commit the `.env` file!** It contains credentials.```The Docker image is used ONLY for running migrations:
 
+**Problem:** Rust version mismatch
 
+- **Solution:** Use `rust:latest-slim-bookworm` base image
+
+- **Pin:** diesel_cli to 2.2.4 for stability
 
 ---
 
+**Problem:** GHCR authentication failure
 
+- **Check:** `PERSONAL_ACCESS_TOKEN` has `read:packages` scope
+
+- **Verify:** Token is active and not expired
 
 ## Database SchemaThe Job executes `diesel migration run` against your PostgreSQL instance.```yaml
 
+## Development
 
+
+
+### Local Setup
 
 The library provides:# Kubernetes Job
 
+```bash
+
+# 1. Clone repository
+
+git clone https://github.com/nwagbara-group-llc/databaseschema.git
+
+cd databaseschema- **TimescaleDB hypertables** for time-series market data## ConfigurationapiVersion: batch/v1
 
 
-- **TimescaleDB hypertables** for time-series market data## ConfigurationapiVersion: batch/v1
 
-- **PostgreSQL with PostGIS** for geospatial data
+# 2. Install dependencies- **PostgreSQL with PostGIS** for geospatial data
+
+cargo build
 
 - **Diesel ORM** for type-safe querieskind: Job
 
-- **Deadpool** for async connection pooling
+# 3. Set up PostgreSQL with TimescaleDB
 
-Set `DATABASE_URL` in your environment:metadata:
+docker run -d \- **Deadpool** for async connection pooling
+
+  -p 5432:5432 \
+
+  -e POSTGRES_PASSWORD=password \Set `DATABASE_URL` in your environment:metadata:
+
+  timescale/timescaledb:latest-pg15
 
 ### Core Tables
 
-  name: database-migrations
+# 4. Create .env file
+
+cp .env.example .env  name: database-migrations
+
+# Edit .env with your DATABASE_URL
 
 - `securities` - Security master data (symbols, exchanges)
 
-- `order_books` - Real-time order book data (TimescaleDB hypertable)```bashspec:
+# 5. Run migrations
 
-- `trades` - Trade execution history
+diesel migration run- `order_books` - Real-time order book data (TimescaleDB hypertable)```bashspec:
 
-- `positions` - Portfolio positions# .env file (NEVER commit this!)  template:
 
-- `backtest_results` - Backtesting results
 
-DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require    spec:
+# 6. Run tests- `trades` - Trade execution history
 
----
+cargo test
 
-```      containers:
+```- `positions` - Portfolio positions# .env file (NEVER commit this!)  template:
+
+
+
+### Testing- `backtest_results` - Backtesting results
+
+
+
+```bashDATABASE_URL=postgres://user:password@host:5432/database?sslmode=require    spec:
+
+# Unit tests
+
+cargo test---
+
+
+
+# Integration tests (requires running PostgreSQL)```      containers:
+
+cargo test --features integration-tests
 
 ## CI/CD
 
-      - name: migrations
+# Check migrations
+
+diesel migration list      - name: migrations
+
+```
 
 ### Automatic Image Builds
 
+## Security
+
 ## Dependencies        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
 
-GitHub Actions automatically builds and pushes to GHCR when you:
+- **Never commit `.env` files** - Use `.env.example` templates
 
-- Change migrations        env:
+- **Use SSL/TLS** - Set `PGSSLMODE=require` in productionGitHub Actions automatically builds and pushes to GHCR when you:
 
-- Update source code
+- **Rotate credentials** - Update `DATABASE_URL` regularly
 
-- Modify Dockerfile- PostgreSQL 15+ with PostGIS extension        - name: DATABASE_URL
-
-
-
-**No manual steps needed!** Just `git push`.- TimescaleDB (for time-series data)          value: "postgres://user:pass@postgresql:5432/dbname"
+- **Limit permissions** - Database user should have minimum required privileges- Change migrations        env:
 
 
+
+## License- Update source code
+
+
+
+See [LICENSE](LICENSE) file for details.- Modify Dockerfile- PostgreSQL 15+ with PostGIS extension        - name: DATABASE_URL
+
+
+
+## Support
+
+
+
+For issues or questions:**No manual steps needed!** Just `git push`.- TimescaleDB (for time-series data)          value: "postgres://user:pass@postgresql:5432/dbname"
+
+1. Check [Troubleshooting](#troubleshooting) section
+
+2. Review [GitHub Issues](https://github.com/nwagbara-group-llc/databaseschema/issues)
+
+3. Contact: [Your Contact Info]
 
 ### Image Location- Diesel ORM for migrations and query builder        # Default CMD is: diesel migration run
 
+---
 
+
+
+**Built with:** Rust 🦀 | Diesel | TimescaleDB | PostgreSQL
 
 ```- Deadpool for async connection pooling```
 
