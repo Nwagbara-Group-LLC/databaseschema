@@ -2,7 +2,7 @@
 # Purpose: Migration runner for Diesel database migrations
 # Usage: Kubernetes Job to run `diesel migration run`
 
-FROM rust:1.82.0-slim-bookworm
+FROM rust:latest-slim-bookworm
 
 # Install diesel CLI and PostgreSQL client
 RUN apt-get update && apt-get install -y \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     pkg-config \
     ca-certificates \
-    && cargo install diesel_cli --no-default-features --features postgres \
+    && cargo install diesel_cli --no-default-features --features postgres --version 2.2.4 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
