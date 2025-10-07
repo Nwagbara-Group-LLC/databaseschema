@@ -1,63 +1,77 @@
-# 🗃️ DatabaseSchema - Enterprise Trading Database Management
+# 🗃️ DatabaseSchema - Trading Platform Database Library
 
 [![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
 [![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](Dockerfile)
 
-An **enterprise-grade database schema and connection management system** for high-performance trading platforms. Provides secure, resilient, and efficient PostgreSQL (TimescaleDB) connectivity with advanced pooling, migration management, and time-series optimization for financial data.
-
----
-
-## 🎯 **Overview**
-
-DatabaseSchema is the foundational data layer for the Trading Platform ecosystem, delivering enterprise-grade PostgreSQL connectivity with TimescaleDB time-series extensions. Built for ultra-high frequency trading environments requiring microsecond-level database operations, comprehensive audit trails, and regulatory compliance.
-
-### **🚀 Key Capabilities**
-- **High-Performance Pooling**: Advanced async connection pooling with deadpool
-- **TimescaleDB Integration**: Optimized for time-series financial data storage
-- **Migration Management**: Automated schema migrations with Diesel ORM
-- **Security First**: TLS encryption, connection validation, and audit logging  
-- **Production Ready**: Kubernetes deployment with comprehensive monitoring
+A **Rust library** providing database schema, connection pooling, and Diesel migrations for the Trading Platform ecosystem.
 
 ---
 
-## 📋 **Table of Contents**
+## 🎯 **What is this?**
 
-- [🔥 Features](#-features)
-- [🏗️ Architecture](#%EF%B8%8F-architecture)
-- [📊 Database Schema](#-database-schema)
-- [⚡ Quick Start](#-quick-start)
-- [🔧 Configuration](#-configuration)
-- [🗄️ Migrations](#%EF%B8%8F-migrations)
-- [📦 Usage](#-usage)
-- [🧪 Testing](#-testing)
-- [🐳 Docker](#-docker)
-- [☁️ Deployment](#%EF%B8%8F-deployment)
-- [🤝 Contributing](#-contributing)
+**DatabaseSchema is a LIBRARY, not a standalone service.**
+
+It serves two purposes:
+1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
+2. **Migration Runner**: Contains Diesel migrations that run in a Kubernetes Job
+
+### **Important**
+- ❌ **NOT** a standalone microservice
+- ❌ **NO** HTTP server or API
+- ✅ **Library** used by other services
+- ✅ **Contains** Diesel migrations for database schema
 
 ---
 
-## 🔥 **Features**
+## � **Usage**
 
-### **Core Database Features**
-- **Async Connection Pooling**: High-performance deadpool-postgres based connection management
-- **TimescaleDB Support**: Time-series database optimizations for financial data
-- **Migration System**: Automated schema versioning and deployment with Diesel
-- **Connection Health**: Automated health checks and connection recycling
-- **TLS Security**: Encrypted database connections with certificate validation
+### **As a Library (in other Rust projects)**
 
-### **Trading Platform Integration**
-- **Market Data Storage**: High-frequency tick data with microsecond timestamps
-- **Order Management**: Complete order lifecycle tracking and execution history
-- **Portfolio Tracking**: Real-time position management and P&L calculation
-- **Risk Management**: Position limits, exposure tracking, and compliance reporting
-- **Audit Trail**: Complete transaction history for regulatory compliance
+```rust
+use databaseschema::{create_timescale_connection_pool, get_timescale_connection};
+use std::sync::Arc;
 
-### **Enterprise Features**
-- **High Availability**: Connection failover and automatic reconnection
-- **Performance Monitoring**: Query performance metrics and connection pooling stats
+#[tokio::main]
+async fn main() {
+    // Create connection pool
+    let pool = Arc::new(create_timescale_connection_pool());
+    
+    // Get connection from pool
+    let conn = get_timescale_connection(pool).await.unwrap();
+    
+    // Use connection...
+}
+```
+
+### **Running Migrations (Kubernetes Job)**
+
+The Docker image is used ONLY for running migrations:
+
+```yaml
+# Kubernetes Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migrations
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrations
+        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
+        env:
+        - name: DATABASE_URL
+          value: "postgres://user:pass@postgresql:5432/dbname"
+        # Default CMD is: diesel migration run
+```
+
+---
+
+## 🗄️ **Migrations**
+
+### **Running Migrations Locally**
 - **Data Integrity**: Foreign key constraints, triggers, and data validation
 - **Backup Integration**: Automated backup scheduling and point-in-time recovery
 - **Kubernetes Ready**: Helm charts for scalable cloud deployment
