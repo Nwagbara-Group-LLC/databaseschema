@@ -4,7 +4,7 @@ pub mod models;
 pub mod errors;
 
 use anyhow::Result;
-use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use diesel_async::AsyncPgConnection;
 use diesel_async::pooled_connection::{AsyncDieselConnectionManager, deadpool};
 use dotenv::dotenv;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};

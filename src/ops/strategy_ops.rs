@@ -3,7 +3,6 @@ use diesel::result::Error as DieselError;
 use serde_json::Value as JsonValue;
 use uuid::Uuid;
 use bigdecimal::{BigDecimal, FromPrimitive};
-use ultra_logger::UltraLogger;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 
 use crate::models::strategy::{

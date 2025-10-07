@@ -1,8 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use diesel::pg::{sql_types::Timestamptz, Pg};
 use diesel::prelude::*;
-use diesel::sql_types::{Nullable, Numeric, VarChar};
+use diesel::pg::Pg;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

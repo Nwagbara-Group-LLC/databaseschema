@@ -9,13 +9,7 @@ use uuid::Uuid;
 use ultra_logger::UltraLogger;
 
 use crate::models::backtest_result::{
-    BacktestResult, NewBacktestResult, 
-    BacktestReport, NewBacktestReport,
-    BacktestReportAccessLog, NewBacktestReportAccessLog,
-    BacktestTrade, NewBacktestTrade,
-    BacktestEquityCurve, NewBacktestEquityCurve,
-    BacktestPositionHistory, NewBacktestPositionHistory,
-    BacktestDrawdownPeriod, NewBacktestDrawdownPeriod
+    BacktestResult, NewBacktestResult
 };
 use crate::get_timescale_connection;
 use diesel_async::pooled_connection::deadpool;
