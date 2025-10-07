@@ -1,2 +1,17 @@
+# Rust build artifacts
 /target
+**/target
+
+# Environment files (never commit credentials!)
 .env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

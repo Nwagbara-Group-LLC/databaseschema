@@ -1,80 +1,158 @@
-# 🗃️ DatabaseSchema - Trading Platform Database Library
+# DatabaseSchema# 🗃️ DatabaseSchema - Trading Platform Database Library
 
-[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)
+
+
+**Rust library providing PostgreSQL schema and migrations for the Trading Platform.**[![Rust](https://img.shields.io/badge/rust-1.82+-orange.svg)](https://www.rust-lang.org)
+
 [![PostgreSQL](https://img.shields.io/badge/postgresql-15+-blue.svg)](https://www.postgresql.org)
-[![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
+
+## What is this?[![TimescaleDB](https://img.shields.io/badge/timescaledb-enabled-green.svg)](https://www.timescale.com)
+
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+This is a **library**, not a standalone service. It serves two purposes:
 
 A **Rust library** providing database schema, connection pooling, and Diesel migrations for the Trading Platform ecosystem.
 
----
-
-## 🎯 **What is this?**
-
-**DatabaseSchema is a LIBRARY, not a standalone service.**
-
-It serves two purposes:
 1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
-2. **Migration Runner**: Contains Diesel migrations that run in a Kubernetes Job
 
-### **Important**
-- ❌ **NOT** a standalone microservice
-- ❌ **NO** HTTP server or API
+2. **Migration Runner**: Diesel migrations run in a Kubernetes Job---
+
+
+
+## Usage as a Library## 🎯 **What is this?**
+
+
+
+```toml**DatabaseSchema is a LIBRARY, not a standalone service.**
+
+# Cargo.toml
+
+[dependencies]It serves two purposes:
+
+databaseschema = { path = "../databaseschema" }1. **Rust Library**: Imported by DataEngine and other services for PostgreSQL connection pooling
+
+```2. **Migration Runner**: Contains Diesel migrations that run in a Kubernetes Job
+
+
+
+```rust### **Important**
+
+use databaseschema::{create_timescale_connection_pool, get_timescale_connection};- ❌ **NOT** a standalone microservice
+
+use std::sync::Arc;- ❌ **NO** HTTP server or API
+
 - ✅ **Library** used by other services
-- ✅ **Contains** Diesel migrations for database schema
 
----
+#[tokio::main]- ✅ **Contains** Diesel migrations for database schema
 
-## � **Usage**
-
-### **As a Library (in other Rust projects)**
-
-```rust
-use databaseschema::{create_timescale_connection_pool, get_timescale_connection};
-use std::sync::Arc;
-
-#[tokio::main]
 async fn main() {
-    // Create connection pool
-    let pool = Arc::new(create_timescale_connection_pool());
-    
-    // Get connection from pool
+
+    let pool = Arc::new(create_timescale_connection_pool());---
+
     let conn = get_timescale_connection(pool).await.unwrap();
-    
-    // Use connection...
+
+    // Use connection...## � **Usage**
+
 }
-```
 
-### **Running Migrations (Kubernetes Job)**
+```### **As a Library (in other Rust projects)**
 
-The Docker image is used ONLY for running migrations:
 
-```yaml
+
+## Running Migrations```rust
+
+use databaseschema::{create_timescale_connection_pool, get_timescale_connection};
+
+### Local Developmentuse std::sync::Arc;
+
+
+
+```bash#[tokio::main]
+
+# Install diesel CLIasync fn main() {
+
+cargo install diesel_cli --no-default-features --features postgres    // Create connection pool
+
+    let pool = Arc::new(create_timescale_connection_pool());
+
+# Run migrations    
+
+diesel migration run    // Get connection from pool
+
+```    let conn = get_timescale_connection(pool).await.unwrap();
+
+    
+
+### Kubernetes (Production)    // Use connection...
+
+}
+
+Migrations run automatically via a Kubernetes Job using the `databaseschema` Docker image:```
+
+
+
+```bash### **Running Migrations (Kubernetes Job)**
+
+kubectl apply -f k8s/migrations.yaml
+
+```The Docker image is used ONLY for running migrations:
+
+
+
+The Job executes `diesel migration run` against your PostgreSQL instance.```yaml
+
 # Kubernetes Job
-apiVersion: batch/v1
+
+## ConfigurationapiVersion: batch/v1
+
 kind: Job
-metadata:
+
+Set `DATABASE_URL` in your environment:metadata:
+
   name: database-migrations
-spec:
-  template:
-    spec:
-      containers:
+
+```bashspec:
+
+# .env file (NEVER commit this!)  template:
+
+DATABASE_URL=postgres://user:password@host:5432/database?sslmode=require    spec:
+
+```      containers:
+
       - name: migrations
-        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
+
+## Dependencies        image: ghcr.io/nwagbara-group-llc/databaseschema:latest
+
         env:
-        - name: DATABASE_URL
-          value: "postgres://user:pass@postgresql:5432/dbname"
-        # Default CMD is: diesel migration run
-```
 
----
+- PostgreSQL 15+ with PostGIS extension        - name: DATABASE_URL
 
-## 🗄️ **Migrations**
+- TimescaleDB (for time-series data)          value: "postgres://user:pass@postgresql:5432/dbname"
 
-### **Running Migrations Locally**
+- Diesel ORM for migrations and query builder        # Default CMD is: diesel migration run
+
+- Deadpool for async connection pooling```
+
+
+
+## Used By---
+
+
+
+- **DataEngine** - Market data processing## 🗄️ **Migrations**
+
+- **SignalEngine** - Trading signal generation
+
+- **BacktestingEngine** - Historical backtesting### **Running Migrations Locally**
+
 - **Data Integrity**: Foreign key constraints, triggers, and data validation
-- **Backup Integration**: Automated backup scheduling and point-in-time recovery
+
+## License- **Backup Integration**: Automated backup scheduling and point-in-time recovery
+
 - **Kubernetes Ready**: Helm charts for scalable cloud deployment
+
+Apache 2.0
 
 ---
 
