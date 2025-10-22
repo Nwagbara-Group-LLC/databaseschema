@@ -29,7 +29,7 @@ pub async fn create_historical_order(pool: Arc<deadpool::Pool<AsyncPgConnection>
             
         diesel::insert_into(historical_orders)
             .values(&historical_order)
-            .on_conflict(event_id)
+            .on_conflict((timestamp, order_id, event_type))
             .do_update()
             .set(&historical_order)
             .execute(&mut connection)
@@ -89,7 +89,7 @@ pub async fn create_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection
                 // Batch insert with conflict resolution
                 diesel::insert_into(historical_orders)
                     .values(chunk)
-                    .on_conflict(event_id)
+                    .on_conflict((timestamp, order_id, event_type))
                     .do_update()
                     .set((
                         event_id.eq(excluded(event_id)),
