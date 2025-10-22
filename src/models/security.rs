@@ -19,7 +19,7 @@ impl NewSecurity {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Queryable, Selectable, QueryableByName, AsChangeset)]
+#[derive(Serialize, Deserialize, Debug, Clone, Queryable, Selectable, QueryableByName, AsChangeset)]
 #[diesel(table_name = securities)]
 #[diesel(check_for_backend(Pg))]
 pub struct Security {
