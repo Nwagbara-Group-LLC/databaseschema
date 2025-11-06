@@ -28,14 +28,16 @@ pub async fn create_orderbook(pool: Arc<deadpool::Pool<AsyncPgConnection>>, orde
             )
         })?;
         
+    // Use ON CONFLICT on symbol (the unique key that's actually failing)
+    // If orderbook exists, just return the existing one instead of trying to update
     diesel::insert_into(order_books)
         .values(&orderbook)
-        .on_conflict(order_book_id)
-        .do_update()
-        .set(&orderbook)
+        .on_conflict(symbol)
+        .do_nothing()
         .execute(&mut connection)
         .await?;
 
+    // Fetch the orderbook (either newly created or existing)
     let result = order_books
         .filter(security_id.eq(&orderbook.security_id))
         .first(&mut connection)
