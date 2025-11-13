@@ -19,7 +19,7 @@ pub fn create_timescale_connection_pool() -> deadpool::Pool<AsyncPgConnection> {
     let config = AsyncDieselConnectionManager::<AsyncPgConnection>::new(database_url);
 
     deadpool::Pool::builder(config)
-        .max_size(10) // Limit to 10 connections per pod (3 pods × 10 = 30 total)
+        .max_size(5) // Limit to 5 connections per pod (3 pods × 5 = 15 total, well below current 24)
         .build()
         .expect("Failed to create database pool")
 }
