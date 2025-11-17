@@ -34,42 +34,43 @@ pub async fn create_historical_snapshot(pool: Arc<deadpool::Pool<AsyncPgConnecti
             .await
             .expect("Error connecting to database");
 
-        // Use transaction for atomicity
-        connection.transaction::<_, Error, _>(|conn| Box::pin(async {
-            // Batch insert with conflict resolution
-            diesel::insert_into(historical_snapshot)
-                .values(&snapshots)
-                .on_conflict(event_id)
-                .do_update()
-                .set((
-                    event_id.eq(excluded(event_id)),
-                    timestamp.eq(excluded(timestamp)),
-                    order_id.eq(excluded(order_id)),
-                    event_type.eq(excluded(event_type)),
-                    side.eq(excluded(side)),
-                    price_level.eq(excluded(price_level)),
-                    quantity.eq(excluded(quantity)),
-                    status.eq(excluded(status)),
-                    exchange.eq(excluded(exchange)),
-                    symbol.eq(excluded(symbol)),
-                ))
-                .execute(conn)
-                .await?;
+        // Process in smaller batches to reduce deadlock probability
+        const BATCH_SIZE: usize = 100;
+        let mut all_results = Vec::with_capacity(snapshots.len());
 
-            // Fetch the inserted/updated records
-            let order_ids: Vec<String> = snapshots.iter()
-                .map(|snapshot| snapshot.order_id.clone())
-                .collect();
-                
-            historical_snapshot
-                .filter(order_id.eq_any(&order_ids))
-                .load::<HistoricalSnapshot>(conn)
-                .await
-                .map_err(|e| {
-                    error!("Failed to fetch historical snapshots after insert: {}", e);
-                    e
-                })
-        })).await
+        for chunk in snapshots.chunks(BATCH_SIZE) {
+            // Sort by event_id to ensure consistent lock ordering across pods
+            let mut sorted_chunk = chunk.to_vec();
+            sorted_chunk.sort_by(|a, b| a.event_id.cmp(&b.event_id));
+
+            let batch_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                // Use DO NOTHING to avoid deadlocks on concurrent inserts
+                diesel::insert_into(historical_snapshot)
+                    .values(&sorted_chunk)
+                    .on_conflict(event_id)
+                    .do_nothing()
+                    .execute(conn)
+                    .await?;
+
+                // Fetch the inserted/updated records
+                let order_ids: Vec<String> = sorted_chunk.iter()
+                    .map(|snapshot| snapshot.order_id.clone())
+                    .collect();
+                    
+                historical_snapshot
+                    .filter(order_id.eq_any(&order_ids))
+                    .load::<HistoricalSnapshot>(conn)
+                    .await
+                    .map_err(|e| {
+                        error!("Failed to fetch historical snapshots after insert: {}", e);
+                        e
+                    })
+            })).await?;
+
+            all_results.extend(batch_results);
+        }
+
+        Ok(all_results)
     }).await
 }
 

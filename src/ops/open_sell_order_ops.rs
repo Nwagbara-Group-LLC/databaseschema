@@ -65,34 +65,43 @@ pub async fn create_open_sell_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>
         .await
         .expect("Error connecting to database");
 
-        // Use transaction for atomicity
-        connection.transaction::<_, Error, _>(|conn| Box::pin(async {
-            // Batch insert with conflict resolution
-            diesel::insert_into(open_sell_orders)
-                .values(&orders)
-                .on_conflict((created_at, unique_id))
-                .do_update()
-                .set((
-                    price_level.eq(excluded(price_level)),
-                    sell_quantity.eq(excluded(sell_quantity)),
-                ))
-                .execute(conn)
-                .await?;
+        // Process in smaller batches to reduce deadlock probability
+        const BATCH_SIZE: usize = 25;
+        let mut all_results = Vec::with_capacity(orders.len());
 
-            // Fetch the inserted/updated records
-            let unique_ids: Vec<String> = orders.iter()
-                .map(|order| order.unique_id.clone())
-                .collect();
-                
-            open_sell_orders
-                .filter(unique_id.eq_any(&unique_ids))
-                .load::<OpenSellOrder>(conn)
-                .await
-                .map_err(|e| {
-                    error!("Database error fetching created sell orders: {}", e);
-                    e
-                })
-        })).await
+        for chunk in orders.chunks(BATCH_SIZE) {
+            // Sort by unique_id to ensure consistent lock ordering across pods
+            let mut sorted_chunk = chunk.to_vec();
+            sorted_chunk.sort_by(|a, b| a.unique_id.cmp(&b.unique_id));
+
+            let batch_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                // Use DO NOTHING to avoid deadlocks on concurrent inserts
+                diesel::insert_into(open_sell_orders)
+                    .values(&sorted_chunk)
+                    .on_conflict((created_at, unique_id))
+                    .do_nothing()
+                    .execute(conn)
+                    .await?;
+
+                // Fetch the inserted/updated records
+                let unique_ids: Vec<String> = sorted_chunk.iter()
+                    .map(|order| order.unique_id.clone())
+                    .collect();
+                    
+                open_sell_orders
+                    .filter(unique_id.eq_any(&unique_ids))
+                    .load::<OpenSellOrder>(conn)
+                    .await
+                    .map_err(|e| {
+                        error!("Database error fetching created sell orders: {}", e);
+                        e
+                    })
+            })).await?;
+
+            all_results.extend(batch_results);
+        }
+
+        Ok(all_results)
     }).await
 }
 

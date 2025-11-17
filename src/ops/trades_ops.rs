@@ -31,20 +31,20 @@ pub async fn create_trades(pool: Arc<deadpool::Pool<AsyncPgConnection>>, new_tra
             )
         })?;
 
-        // Process in batches to handle large datasets
-        const BATCH_SIZE: usize = 1000;
+        // Process in smaller batches to reduce deadlock probability
+        const BATCH_SIZE: usize = 50;
         
         for chunk in new_trades.chunks(BATCH_SIZE) {
+            // Sort by trade_id to ensure consistent lock ordering across pods
+            let mut sorted_chunk = chunk.to_vec();
+            sorted_chunk.sort_by(|a, b| a.trade_id.cmp(&b.trade_id));
+
             connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                // Use DO NOTHING to avoid deadlocks on concurrent inserts
                 diesel::insert_into(trades)
-                    .values(chunk)
+                    .values(&sorted_chunk)
                     .on_conflict((created_at, trade_id))
-                    .do_update()
-                    .set((
-                        side.eq(excluded(side)),
-                        price.eq(excluded(price)),
-                        quantity.eq(excluded(quantity)),
-                    ))
+                    .do_nothing()
                     .execute(conn)
                     .await
                     .map_err(|e| {

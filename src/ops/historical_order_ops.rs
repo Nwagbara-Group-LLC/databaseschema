@@ -79,54 +79,46 @@ pub async fn create_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection
                 )
             })?;
 
-        // Use transaction for atomicity
-        let result = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
-            // Process in chunks for better performance
-            const CHUNK_SIZE: usize = 1000;
-            let mut all_results = Vec::new();
-            
-            for chunk in orders.chunks(CHUNK_SIZE) {
-                // Batch insert with conflict resolution
+        // Process in smaller chunks to reduce deadlock probability
+        const CHUNK_SIZE: usize = 100;
+        let mut all_results = Vec::new();
+        
+        for chunk in orders.chunks(CHUNK_SIZE) {
+            // Sort by order_id to ensure consistent lock ordering across pods
+            let mut sorted_chunk = chunk.to_vec();
+            sorted_chunk.sort_by(|a, b| a.get_order_id().cmp(&b.get_order_id()));
+
+            let chunk_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
+                // Use DO NOTHING to avoid deadlocks on concurrent inserts
                 diesel::insert_into(historical_orders)
-                    .values(chunk)
+                    .values(&sorted_chunk)
                     .on_conflict((timestamp, order_id, event_type))
-                    .do_update()
-                    .set((
-                        event_id.eq(excluded(event_id)),
-                        timestamp.eq(excluded(timestamp)),
-                        order_id.eq(excluded(order_id)),
-                        event_type.eq(excluded(event_type)),
-                        side.eq(excluded(side)),
-                        price_level.eq(excluded(price_level)),
-                        quantity.eq(excluded(quantity)),
-                        prev_price.eq(excluded(prev_price)),
-                        prev_quantity.eq(excluded(prev_quantity)),
-                        status.eq(excluded(status)),
-                        exchange.eq(excluded(exchange)),
-                        symbol.eq(excluded(symbol)),
-                    ))
+                    .do_nothing()
                     .execute(conn)
                     .await?;
 
                 // Fetch the inserted/updated records for this chunk
-                let chunk_order_ids: Vec<String> = chunk.iter()
+                let chunk_order_ids: Vec<String> = sorted_chunk.iter()
                     .map(|order| order.get_order_id())
                     .collect();
                     
-                let chunk_results = historical_orders
+                historical_orders
                     .filter(order_id.eq_any(&chunk_order_ids))
                     .load::<HistoricalOrder>(conn)
                     .await
                     .map_err(|e| {
                         error!("Error fetching historical orders chunk: {}", e);
                         e
-                    })?;
-                    
-                all_results.extend(chunk_results);
-            }
-            
-            Ok(all_results)
-        })).await?;
+                    })
+            })).await?;
+                
+            all_results.extend(chunk_results);
+        }
+        
+        info!("Created {} historical orders in {}ms", all_results.len(), start_time.elapsed().as_millis());
+        Ok(all_results)
+    }).await
+}
         
         info!("Created {} historical orders in {}ms", result.len(), start_time.elapsed().as_millis());
         Ok(result)
