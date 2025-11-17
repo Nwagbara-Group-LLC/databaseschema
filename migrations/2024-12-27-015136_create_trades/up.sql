@@ -12,16 +12,21 @@ CREATE TABLE IF NOT EXISTS trades (
     PRIMARY KEY (created_at, trade_id)
 );
 
-SELECT create_hypertable('trades', 'created_at', chunk_time_interval => interval '1 millisecond');
+-- Use 1-day chunks for efficient storage of high-frequency tick data
+SELECT create_hypertable('trades', 'created_at', chunk_time_interval => interval '1 day');
 
+-- Enable compression for old data (compress after 1 hour)
 ALTER TABLE trades SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'symbol, exchange',
-    timescaledb.compress_orderby = 'created_at DESC'
+    timescaledb.compress_segmentby = 'symbol, exchange, side',
+    timescaledb.compress_orderby = 'created_at DESC, trade_id'
 );
 
-SELECT add_compression_policy('trades', INTERVAL '1 day');
-SELECT add_retention_policy('trades', INTERVAL '6 years');
+-- Compress data older than 1 hour for efficient storage
+SELECT add_compression_policy('trades', INTERVAL '1 hour');
+
+-- Keep 3 months of data (90 days)
+SELECT add_retention_policy('trades', INTERVAL '90 days');
 
 -- Index on symbol for faster lookups by symbol
 CREATE INDEX idx_trades_symbol ON trades (symbol);

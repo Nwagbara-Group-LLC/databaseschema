@@ -17,21 +17,21 @@ CREATE TABLE historical_orders (
     UNIQUE (timestamp, order_id, event_type)
 );
 
--- Convert to TimescaleDB hypertable for time-series optimization
-SELECT create_hypertable('historical_orders', 'timestamp', chunk_time_interval => interval '1 hour');
+-- Convert to TimescaleDB hypertable with 1-day chunks for high-frequency event data
+SELECT create_hypertable('historical_orders', 'timestamp', chunk_time_interval => interval '1 day');
 
--- Enable compression with aggressive settings for high-frequency data
+-- Enable compression with optimized settings for high-frequency event data
 ALTER TABLE historical_orders SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'symbol, exchange',
+    timescaledb.compress_segmentby = 'symbol, exchange, event_type',
     timescaledb.compress_orderby = 'timestamp DESC, event_id'
 );
 
--- Add aggressive compression policy (compress after 1 day)
-SELECT add_compression_policy('historical_orders', INTERVAL '1 day');
+-- Add aggressive compression policy (compress after 1 hour)
+SELECT add_compression_policy('historical_orders', INTERVAL '1 hour');
 
--- Add retention policy (keep data for 6 months)
-SELECT add_retention_policy('historical_orders', INTERVAL '6 months');
+-- Add retention policy (keep data for 90 days)
+SELECT add_retention_policy('historical_orders', INTERVAL '90 days');
 
 -- Optimized indexes for compressed data
 CREATE INDEX idx_historical_orders_timestamp ON historical_orders(timestamp DESC);

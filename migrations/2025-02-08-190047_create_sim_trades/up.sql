@@ -12,16 +12,21 @@ CREATE TABLE IF NOT EXISTS sim_trades (
     PRIMARY KEY (created_at, backtest_id, trade_id)
 );
 
-SELECT create_hypertable('sim_trades', 'created_at', chunk_time_interval => interval '1 millisecond');
+-- Create hypertable with 1-day chunks for efficient backtest data storage
+SELECT create_hypertable('sim_trades', 'created_at', chunk_time_interval => interval '1 day');
 
+-- Enable compression with optimal settings
 ALTER TABLE sim_trades SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'symbol, exchange',
-    timescaledb.compress_orderby = 'created_at DESC'
+    timescaledb.compress_segmentby = 'backtest_id, symbol, exchange, side',
+    timescaledb.compress_orderby = 'created_at DESC, trade_id'
 );
 
-SELECT add_compression_policy('sim_trades', INTERVAL '7 days');
-SELECT add_retention_policy('sim_trades', INTERVAL '6 years');
+-- Compress data older than 1 day (backtests typically complete quickly)
+SELECT add_compression_policy('sim_trades', INTERVAL '1 day');
+
+-- Keep backtest data for 90 days
+SELECT add_retention_policy('sim_trades', INTERVAL '90 days');
 
 -- Index on backtest_id for faster lookups by backtest_id
 CREATE INDEX idx_sim_trades_backtest_id ON sim_trades (backtest_id);

@@ -12,25 +12,29 @@ CREATE TABLE IF NOT EXISTS open_buy_orders (
     PRIMARY KEY (created_at, unique_id)
 );
 
--- Create hypertable only if it doesn't already exist
+-- Create hypertable with 1-day chunks for efficient 1ms tick data storage
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM timescaledb_information.hypertables 
         WHERE hypertable_name = 'open_buy_orders'
     ) THEN
-        PERFORM create_hypertable('open_buy_orders', 'created_at', chunk_time_interval => interval '1 millisecond');
+        PERFORM create_hypertable('open_buy_orders', 'created_at', chunk_time_interval => interval '1 day');
     END IF;
 END $$;
 
+-- Enable compression with optimal settings for order book data
 ALTER TABLE open_buy_orders SET (
     timescaledb.compress,
-    timescaledb.compress_segmentby = 'buy_order_book_id, symbol, exchange, security_id, exchange_id',
-    timescaledb.compress_orderby = 'price_level DESC'
+    timescaledb.compress_segmentby = 'symbol, exchange',
+    timescaledb.compress_orderby = 'created_at DESC, price_level DESC, unique_id'
 );
 
-SELECT add_compression_policy('open_buy_orders', INTERVAL '1 day');
-SELECT add_retention_policy('open_buy_orders', INTERVAL '1 year');
+-- Compress data older than 1 hour
+SELECT add_compression_policy('open_buy_orders', INTERVAL '1 hour');
+
+-- Keep 3 months of data (90 days)
+SELECT add_retention_policy('open_buy_orders', INTERVAL '90 days');
 
 -- Index on unique_id for faster lookups by unique_id
 CREATE INDEX idx_open_buy_unique_id ON open_buy_orders (unique_id);
