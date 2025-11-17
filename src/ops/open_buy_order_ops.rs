@@ -2,7 +2,7 @@ use crate::{get_timescale_connection, models::open_buy_order::{NewOpenBuyOrder, 
 use bigdecimal::BigDecimal;
 use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
-use diesel::{prelude::*, result::Error, upsert::excluded};
+use diesel::{prelude::*, result::Error};
 use diesel::QueryDsl;
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
@@ -87,21 +87,17 @@ pub async fn create_open_buy_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>
         let mut all_results = Vec::with_capacity(orders.len());
 
         for chunk in orders.chunks(BATCH_SIZE) {
-            // Sort by unique_id to ensure consistent lock ordering across pods
-            let mut sorted_chunk = chunk.to_vec();
-            sorted_chunk.sort_by(|a, b| a.unique_id.cmp(&b.unique_id));
-
             let batch_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
                 // Use DO NOTHING to avoid deadlocks on concurrent inserts
                 diesel::insert_into(open_buy_orders)
-                    .values(&sorted_chunk)
+                    .values(chunk)
                     .on_conflict((created_at, unique_id))
                     .do_nothing()
                     .execute(conn)
                     .await?;
 
                 // Fetch the inserted/updated records
-                let unique_ids: Vec<String> = sorted_chunk.iter()
+                let unique_ids: Vec<String> = chunk.iter()
                     .map(|order| order.unique_id.clone())
                     .collect();
                     

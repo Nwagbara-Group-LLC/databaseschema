@@ -1,7 +1,7 @@
 use crate::{get_timescale_connection, models::historical_snapshot::{HistoricalSnapshot, NewHistoricalSnapshot}};
 use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
-use diesel::{prelude::*, result::Error, upsert::excluded};
+use diesel::{prelude::*, result::Error};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use tracing::{info, error, warn};
@@ -39,21 +39,17 @@ pub async fn create_historical_snapshot(pool: Arc<deadpool::Pool<AsyncPgConnecti
         let mut all_results = Vec::with_capacity(snapshots.len());
 
         for chunk in snapshots.chunks(BATCH_SIZE) {
-            // Sort by event_id to ensure consistent lock ordering across pods
-            let mut sorted_chunk = chunk.to_vec();
-            sorted_chunk.sort_by(|a, b| a.event_id.cmp(&b.event_id));
-
             let batch_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
                 // Use DO NOTHING to avoid deadlocks on concurrent inserts
                 diesel::insert_into(historical_snapshot)
-                    .values(&sorted_chunk)
+                    .values(chunk)
                     .on_conflict(event_id)
                     .do_nothing()
                     .execute(conn)
                     .await?;
 
                 // Fetch the inserted/updated records
-                let order_ids: Vec<String> = sorted_chunk.iter()
+                let order_ids: Vec<String> = chunk.iter()
                     .map(|snapshot| snapshot.order_id.clone())
                     .collect();
                     

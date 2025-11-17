@@ -1,7 +1,7 @@
 use crate::{get_timescale_connection, models::historical_order::{HistoricalOrder, NewHistoricalOrder}};
 use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
-use diesel::{prelude::*, result::Error, upsert::excluded};
+use diesel::{prelude::*, result::Error};
 use diesel_async::AsyncConnection;
 use diesel_async::RunQueryDsl;
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
@@ -84,21 +84,17 @@ pub async fn create_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection
         let mut all_results = Vec::new();
         
         for chunk in orders.chunks(CHUNK_SIZE) {
-            // Sort by order_id to ensure consistent lock ordering across pods
-            let mut sorted_chunk = chunk.to_vec();
-            sorted_chunk.sort_by(|a, b| a.get_order_id().cmp(&b.get_order_id()));
-
             let chunk_results = connection.transaction::<_, Error, _>(|conn| Box::pin(async {
                 // Use DO NOTHING to avoid deadlocks on concurrent inserts
                 diesel::insert_into(historical_orders)
-                    .values(&sorted_chunk)
+                    .values(chunk)
                     .on_conflict((timestamp, order_id, event_type))
                     .do_nothing()
                     .execute(conn)
                     .await?;
 
                 // Fetch the inserted/updated records for this chunk
-                let chunk_order_ids: Vec<String> = sorted_chunk.iter()
+                let chunk_order_ids: Vec<String> = chunk.iter()
                     .map(|order| order.get_order_id())
                     .collect();
                     
