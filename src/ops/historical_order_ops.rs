@@ -119,11 +119,6 @@ pub async fn create_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection
         Ok(all_results)
     }).await
 }
-        
-        info!("Created {} historical orders in {}ms", result.len(), start_time.elapsed().as_millis());
-        Ok(result)
-    }).await
-}
 
 pub async fn get_historical_orders(pool: Arc<deadpool::Pool<AsyncPgConnection>>, sym: &str, xchange: &str) -> Result<Vec<HistoricalOrder>, Error> {
     let start_time = Instant::now();
