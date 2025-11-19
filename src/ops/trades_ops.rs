@@ -1,7 +1,7 @@
 use crate::{get_timescale_connection, models::trade::{NewTrade, Trade}};
 use diesel_async::pooled_connection::deadpool;
 use diesel_async::AsyncPgConnection;
-use diesel::{prelude::*, result::Error, upsert::excluded};
+use diesel::{prelude::*, result::Error};
 use diesel_async::{AsyncConnection, RunQueryDsl};
 use tokio_retry::{strategy::{jitter, ExponentialBackoff}, Retry};
 use std::sync::Arc;
